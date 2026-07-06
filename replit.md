@@ -30,7 +30,7 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+SweepScout AI — a sweepstakes discovery, compliance, and manual entry-tracking tool. It discovers candidate sweepstakes, extracts/scoring rules, stages an approval queue, and tracks manual entries. It never auto-submits: manual approval is always required for every entry. Frontend artifact `sweepscout` (Vite+React, previewPath `/`) talks to the `api-server` Express backend under `/api`.
 
 ## User preferences
 

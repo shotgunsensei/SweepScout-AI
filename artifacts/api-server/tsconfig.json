@@ -5,6 +5,10 @@
     "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "dist",
     "rootDir": "src",
+    "baseUrl": ".",
+    "paths": {
+      "@/lib/*": ["src/domain/*"]
+    },
     "types": ["node"]
   },
   "include": ["src"],

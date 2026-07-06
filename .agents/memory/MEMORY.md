@@ -1,0 +1,1 @@
+- [SweepScout Vite+React migration](sweepscout-migration.md) — sweepscout frontend conventions: /api envelope unwrapping, onSubmit+FormData forms, manual-approval invariant, ui.tsx-vs-ui/-dir gotcha.
