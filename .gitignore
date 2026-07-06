@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.next
+node_modules
+.data
+.npm-cache
+.node-gyp
+.pnpm-store
+*.log
+logs
+*.tsbuildinfo

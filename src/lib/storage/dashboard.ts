@@ -1,0 +1,48 @@
+import type {
+  AppSettings,
+  AssistantTask,
+  DashboardData,
+  DiscoveryJob,
+  EntryLog,
+  Sweepstake,
+} from "@/lib/types";
+
+export function buildDashboardData(input: {
+  sweepstakes: Sweepstake[];
+  discoveryJobs: DiscoveryJob[];
+  assistantTasks: AssistantTask[];
+  entryLogs: EntryLog[];
+  settings: AppSettings;
+}): DashboardData {
+  const now = Date.now();
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  const active = input.sweepstakes.filter((item) => item.status !== "expired" && item.status !== "rejected");
+  const endingSoon = active.filter((item) => {
+    if (!item.endAt) {
+      return false;
+    }
+    const end = new Date(item.endAt).getTime();
+    return end >= now && end <= now + sevenDays;
+  });
+  const entriesThisWeek = input.entryLogs.filter(
+    (entry) => new Date(entry.attemptedAt).getTime() >= now - sevenDays,
+  );
+  const averageEligibilityScore =
+    active.length === 0
+      ? 0
+      : Math.round(active.reduce((sum, item) => sum + item.eligibilityScore, 0) / active.length);
+
+  return {
+    stats: {
+      activeSweepstakes: active.length,
+      endingSoon: endingSoon.length,
+      queuedAssistantTasks: input.assistantTasks.filter((task) =>
+        ["queued", "ready_for_review", "blocked"].includes(task.status),
+      ).length,
+      entriesThisWeek: entriesThisWeek.length,
+      averageEligibilityScore,
+      highRiskCount: input.sweepstakes.filter((item) => item.scamScore >= input.settings.maxScamScore).length,
+    },
+    ...input,
+  };
+}
