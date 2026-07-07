@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "SweepScout AI Mobile",
+    "slug": "sweepscout-mobile",
+    "scheme": "sweepscout-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#07100d"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.replit.sweepscoutmobile"
+    },
+    "android": {
+      "package": "com.replit.sweepscoutmobile"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "replit": {
+        "origin": "https://replit.com"
+      }
+    }
+  }
+}
