@@ -249,6 +249,7 @@ async function saveCandidate(candidate: DiscoveryCandidate) {
     rulesText: null,
     rulesExtractedAt: null,
     formUrl: null,
+    emailAlias: null,
     scamScore: 35,
     eligibilityScore: 50,
     riskFlags: [

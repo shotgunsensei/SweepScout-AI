@@ -1,5 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startInboxMonitoring } from "@/lib/services/inbox-monitor";
+import { startRulesChangeMonitoring } from "@/lib/services/rules-change-monitor";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +24,10 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  startInboxMonitoring().catch((err) => {
+    logger.warn({ err }, "Inbox monitoring did not start");
+  });
+  startRulesChangeMonitoring().catch((err) => {
+    logger.warn({ err }, "Rules-change monitoring did not start");
+  });
 });

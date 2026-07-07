@@ -23,6 +23,9 @@ export function SweepstakeCard(props: { item: Sweepstake; children?: React.React
           {!props.compact ? (
             <p className="mt-3 max-w-4xl text-sm leading-6 text-foreground/90">{item.eligibilitySummary}</p>
           ) : null}
+          {!props.compact && item.emailAlias ? (
+            <p className="mt-3 break-all text-sm text-accent">Entry alias: {item.emailAlias}</p>
+          ) : null}
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Badge>{item.country}</Badge>
             <Badge>{item.stateEligibility.includes("ALL") ? "All eligible states" : `${item.stateEligibility.length} states`}</Badge>

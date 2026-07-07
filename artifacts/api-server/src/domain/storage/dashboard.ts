@@ -4,6 +4,8 @@ import type {
   DashboardData,
   DiscoveryJob,
   EntryLog,
+  InboxAlert,
+  RulesChangeAlert,
   Sweepstake,
 } from "@/lib/types";
 
@@ -12,6 +14,8 @@ export function buildDashboardData(input: {
   discoveryJobs: DiscoveryJob[];
   assistantTasks: AssistantTask[];
   entryLogs: EntryLog[];
+  inboxAlerts: InboxAlert[];
+  rulesChangeAlerts: RulesChangeAlert[];
   settings: AppSettings;
 }): DashboardData {
   const now = Date.now();
@@ -42,6 +46,20 @@ export function buildDashboardData(input: {
       entriesThisWeek: entriesThisWeek.length,
       averageEligibilityScore,
       highRiskCount: input.sweepstakes.filter((item) => item.scamScore >= input.settings.maxScamScore).length,
+      inboxNewAlerts: input.inboxAlerts.filter((alert) => alert.status === "new").length,
+      inboxWinnerAlerts: input.inboxAlerts.filter(
+        (alert) => alert.status === "new" && alert.categories.includes("winner_notification"),
+      ).length,
+      inboxPhishingAlerts: input.inboxAlerts.filter(
+        (alert) => alert.status === "new" && alert.categories.includes("phishing_risk"),
+      ).length,
+      rulesNewAlerts: input.rulesChangeAlerts.filter((alert) => alert.status === "new").length,
+      rulesDeadlineAlerts: input.rulesChangeAlerts.filter(
+        (alert) => alert.status === "new" && alert.changedFields.includes("deadline"),
+      ).length,
+      rulesEligibilityAlerts: input.rulesChangeAlerts.filter(
+        (alert) => alert.status === "new" && alert.changedFields.includes("eligibility"),
+      ).length,
     },
     ...input,
   };

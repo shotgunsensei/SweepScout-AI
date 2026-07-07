@@ -5,9 +5,11 @@ import {
   Gauge,
   Home,
   ListChecks,
+  MailWarning,
   Radar,
   Settings,
   ShieldAlert,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -18,7 +20,9 @@ const icons = {
   gauge: Gauge,
   home: Home,
   list: ListChecks,
+  mail: MailWarning,
   radar: Radar,
+  roi: TrendingUp,
   settings: Settings,
   shield: ShieldAlert,
 } satisfies Record<string, LucideIcon>;

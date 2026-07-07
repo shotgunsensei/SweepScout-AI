@@ -19,6 +19,9 @@ import type {
   DiscoveryJob,
   EntryLog,
   ExtractionJob,
+  InboxAlert,
+  RulesChangeAlert,
+  RulesSnapshot,
   Sweepstake,
   UserProfile,
 } from "@/lib/types";
@@ -123,6 +126,39 @@ function migrate(db: Database) {
       payload text not null,
       created_at text not null
     );
+
+    create table if not exists inbox_alerts (
+      id text primary key,
+      message_id text not null unique,
+      status text not null,
+      severity text not null,
+      received_at text not null,
+      payload text not null,
+      created_at text not null,
+      updated_at text not null
+    );
+
+    create table if not exists rules_snapshots (
+      id text primary key,
+      sweepstake_id text not null,
+      rules_url text not null,
+      captured_at text not null,
+      text_hash text not null,
+      normalized_text_hash text not null,
+      payload text not null,
+      created_at text not null
+    );
+
+    create table if not exists rules_change_alerts (
+      id text primary key,
+      sweepstake_id text not null,
+      status text not null,
+      severity text not null,
+      detected_at text not null,
+      payload text not null,
+      created_at text not null,
+      updated_at text not null
+    );
   `);
 }
 
@@ -167,6 +203,8 @@ class SqliteStore implements SweepScoutStore {
       discoveryJobs: await this.listDiscoveryJobs(),
       assistantTasks: await this.listAssistantTasks(),
       entryLogs: await this.listEntryLogs(),
+      inboxAlerts: await this.listInboxAlerts(),
+      rulesChangeAlerts: await this.listRulesChangeAlerts(),
       settings: await this.getSettings(),
     });
   }
@@ -283,6 +321,104 @@ class SqliteStore implements SweepScoutStore {
       .run({ ...entry, payload: JSON.stringify(entry), createdAt: entry.attemptedAt, updatedAt: now });
   }
 
+  async listInboxAlerts(limit = 100) {
+    return (
+      this.db
+        .prepare("select payload from inbox_alerts order by received_at desc, created_at desc limit ?")
+        .all(Math.max(1, Math.min(limit, 500))) as Row[]
+    ).map((row) => normalizeInboxAlertPayload(fromPayload<InboxAlert>(row)));
+  }
+
+  async getInboxAlert(id: string) {
+    const row = this.db.prepare("select payload from inbox_alerts where id = ?").get(id) as Row | undefined;
+    return row ? normalizeInboxAlertPayload(fromPayload<InboxAlert>(row)) : null;
+  }
+
+  async saveInboxAlert(alert: InboxAlert) {
+    const now = new Date().toISOString();
+    const existingRow = this.db.prepare("select payload from inbox_alerts where message_id = ?").get(alert.messageId) as Row | undefined;
+    const existing = existingRow ? normalizeInboxAlertPayload(fromPayload<InboxAlert>(existingRow)) : null;
+    const merged =
+      existing && alert.status === "new"
+        ? {
+            ...alert,
+            status: existing.status,
+            reviewedAt: existing.reviewedAt,
+            reviewNotes: existing.reviewNotes,
+          }
+        : alert;
+    this.db
+      .prepare(
+        `insert into inbox_alerts (id, message_id, status, severity, received_at, payload, created_at, updated_at)
+         values (@id, @messageId, @status, @severity, @receivedAt, @payload, @createdAt, @updatedAt)
+         on conflict(message_id) do update set
+          status = excluded.status,
+          severity = excluded.severity,
+          received_at = excluded.received_at,
+          payload = excluded.payload,
+          updated_at = excluded.updated_at`,
+      )
+      .run({ ...merged, payload: JSON.stringify(merged), updatedAt: now });
+    return merged;
+  }
+
+  async listRulesSnapshots(sweepstakeId?: string) {
+    const rows = sweepstakeId
+      ? (this.db
+          .prepare("select payload from rules_snapshots where sweepstake_id = ? order by captured_at desc")
+          .all(sweepstakeId) as Row[])
+      : (this.db.prepare("select payload from rules_snapshots order by captured_at desc").all() as Row[]);
+    return rows.map((row) => normalizeRulesSnapshotPayload(fromPayload<RulesSnapshot>(row)));
+  }
+
+  async saveRulesSnapshot(snapshot: RulesSnapshot) {
+    this.db
+      .prepare(
+        `insert into rules_snapshots
+          (id, sweepstake_id, rules_url, captured_at, text_hash, normalized_text_hash, payload, created_at)
+         values (@id, @sweepstakeId, @rulesUrl, @capturedAt, @textHash, @normalizedTextHash, @payload, @createdAt)
+         on conflict(id) do update set
+          rules_url = excluded.rules_url,
+          captured_at = excluded.captured_at,
+          text_hash = excluded.text_hash,
+          normalized_text_hash = excluded.normalized_text_hash,
+          payload = excluded.payload`,
+      )
+      .run({ ...snapshot, payload: JSON.stringify(snapshot), createdAt: snapshot.capturedAt });
+    return snapshot;
+  }
+
+  async listRulesChangeAlerts(limit = 100) {
+    return (
+      this.db
+        .prepare("select payload from rules_change_alerts order by detected_at desc, created_at desc limit ?")
+        .all(Math.max(1, Math.min(limit, 500))) as Row[]
+    ).map((row) => normalizeRulesChangeAlertPayload(fromPayload<RulesChangeAlert>(row)));
+  }
+
+  async getRulesChangeAlert(id: string) {
+    const row = this.db.prepare("select payload from rules_change_alerts where id = ?").get(id) as Row | undefined;
+    return row ? normalizeRulesChangeAlertPayload(fromPayload<RulesChangeAlert>(row)) : null;
+  }
+
+  async saveRulesChangeAlert(alert: RulesChangeAlert) {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `insert into rules_change_alerts
+          (id, sweepstake_id, status, severity, detected_at, payload, created_at, updated_at)
+         values (@id, @sweepstakeId, @status, @severity, @detectedAt, @payload, @createdAt, @updatedAt)
+         on conflict(id) do update set
+          status = excluded.status,
+          severity = excluded.severity,
+          detected_at = excluded.detected_at,
+          payload = excluded.payload,
+          updated_at = excluded.updated_at`,
+      )
+      .run({ ...alert, payload: JSON.stringify(alert), createdAt: alert.detectedAt, updatedAt: now });
+    return alert;
+  }
+
   async listExtractionJobs() {
     return (this.db.prepare("select payload from extraction_jobs order by created_at desc").all() as Row[]).map(
       fromPayload<ExtractionJob>,
@@ -394,6 +530,7 @@ function normalizeSweepstakePayload(sweepstake: Sweepstake): Sweepstake {
     ...sweepstake,
     noPurchaseMethodFound: sweepstake.noPurchaseMethodFound ?? false,
     formUrl: sweepstake.formUrl ?? sweepstake.extractedRules?.formUrl ?? null,
+    emailAlias: sweepstake.emailAlias ?? null,
     extractedRules: sweepstake.extractedRules ?? null,
     complianceNotes: sweepstake.complianceNotes ?? sweepstake.riskFlags.map((flag) => flag.label),
   };
@@ -403,9 +540,58 @@ function normalizeEntryPayload(entry: EntryLog): EntryLog {
   return {
     ...entry,
     formUrl: entry.formUrl ?? null,
+    emailAlias: entry.emailAlias ?? null,
+    timeSpentMinutes: entry.timeSpentMinutes ?? estimatedTimeSpentMinutes(entry),
+    prefillSavedMinutes: entry.prefillSavedMinutes ?? (entry.status === "prefilled" ? defaultSettings.roi.prefillSavedMinutes : 0),
     screenshotPath: entry.screenshotPath ?? null,
     prefillFields: entry.prefillFields ?? [],
     blockers: entry.blockers ?? [],
+  };
+}
+
+function normalizeInboxAlertPayload(alert: InboxAlert): InboxAlert {
+  return {
+    ...alert,
+    fromName: alert.fromName ?? null,
+    fromEmail: alert.fromEmail ?? null,
+    matchedSweepstakeId: alert.matchedSweepstakeId ?? null,
+    matchedSweepstakeTitle: alert.matchedSweepstakeTitle ?? null,
+    matchedByAlias: alert.matchedByAlias ?? false,
+    recipientAliases: alert.recipientAliases ?? [],
+    categories: alert.categories?.length ? alert.categories : ["general"],
+    riskFlags: alert.riskFlags ?? [],
+    links: alert.links ?? [],
+    status: alert.status ?? "new",
+    reviewRequired: alert.reviewRequired ?? false,
+    reviewedAt: alert.reviewedAt ?? null,
+    reviewNotes: alert.reviewNotes ?? "",
+  };
+}
+
+function normalizeRulesSnapshotPayload(snapshot: RulesSnapshot): RulesSnapshot {
+  return {
+    ...snapshot,
+    textExcerpt: snapshot.textExcerpt ?? "",
+    extracted: {
+      deadline: snapshot.extracted?.deadline ?? null,
+      eligibility: snapshot.extracted?.eligibility ?? null,
+      prize: snapshot.extracted?.prize ?? null,
+      prizeValue: snapshot.extracted?.prizeValue ?? null,
+      entryFrequency: snapshot.extracted?.entryFrequency ?? null,
+    },
+  };
+}
+
+function normalizeRulesChangeAlertPayload(alert: RulesChangeAlert): RulesChangeAlert {
+  return {
+    ...alert,
+    status: alert.status ?? "new",
+    changedFields: alert.changedFields ?? [],
+    changes: alert.changes ?? [],
+    previousSnapshot: normalizeRulesSnapshotPayload(alert.previousSnapshot),
+    currentSnapshot: normalizeRulesSnapshotPayload(alert.currentSnapshot),
+    reviewNotes: alert.reviewNotes ?? "",
+    reviewedAt: alert.reviewedAt ?? null,
   };
 }
 
@@ -427,8 +613,49 @@ function normalizeSettingsPayload(settings: AppSettings): AppSettings {
   return {
     ...defaultSettings,
     ...settings,
+    emailAliases: {
+      ...defaultSettings.emailAliases,
+      ...(settings.emailAliases ?? {}),
+      prefix: (settings.emailAliases?.prefix ?? defaultSettings.emailAliases.prefix).trim() || defaultSettings.emailAliases.prefix,
+      nextSequence: Number(settings.emailAliases?.nextSequence ?? defaultSettings.emailAliases.nextSequence),
+      excessiveEmailThreshold: Number(
+        settings.emailAliases?.excessiveEmailThreshold ?? defaultSettings.emailAliases.excessiveEmailThreshold,
+      ),
+      spamWindowDays: Number(settings.emailAliases?.spamWindowDays ?? defaultSettings.emailAliases.spamWindowDays),
+    },
+    roi: {
+      ...defaultSettings.roi,
+      ...(settings.roi ?? {}),
+      manualEntryMinutes: Number(settings.roi?.manualEntryMinutes ?? defaultSettings.roi.manualEntryMinutes),
+      prefillReviewMinutes: Number(settings.roi?.prefillReviewMinutes ?? defaultSettings.roi.prefillReviewMinutes),
+      prefillSavedMinutes: Number(settings.roi?.prefillSavedMinutes ?? defaultSettings.roi.prefillSavedMinutes),
+      defaultWinProbabilityBasisPoints: Number(
+        settings.roi?.defaultWinProbabilityBasisPoints ?? defaultSettings.roi.defaultWinProbabilityBasisPoints,
+      ),
+    },
+    rulesMonitor: {
+      ...defaultSettings.rulesMonitor,
+      ...(settings.rulesMonitor ?? {}),
+      pollIntervalMinutes: Number(settings.rulesMonitor?.pollIntervalMinutes ?? defaultSettings.rulesMonitor.pollIntervalMinutes),
+      maxChecksPerRun: Number(settings.rulesMonitor?.maxChecksPerRun ?? defaultSettings.rulesMonitor.maxChecksPerRun),
+    },
+    inbox: {
+      ...defaultSettings.inbox,
+      ...(settings.inbox ?? {}),
+      port: Number(settings.inbox?.port ?? defaultSettings.inbox.port),
+      pollIntervalMinutes: Number(settings.inbox?.pollIntervalMinutes ?? defaultSettings.inbox.pollIntervalMinutes),
+      maxMessagesPerPoll: Number(settings.inbox?.maxMessagesPerPoll ?? defaultSettings.inbox.maxMessagesPerPoll),
+    },
     automatedDiscoveryEnabled: settings.automatedDiscoveryEnabled ?? defaultSettings.automatedDiscoveryEnabled,
     formPrefillEnabled: settings.formPrefillEnabled ?? defaultSettings.formPrefillEnabled,
     requireApprovalForEveryEntry: true,
   };
+}
+
+function estimatedTimeSpentMinutes(entry: EntryLog) {
+  if (entry.status === "prefilled") return defaultSettings.roi.prefillReviewMinutes;
+  if (entry.status === "submitted") return defaultSettings.roi.manualEntryMinutes;
+  if (entry.status === "winner_notification") return 3;
+  if (entry.status === "suspicious" || entry.status === "skipped" || entry.status === "rejected") return 2;
+  return 1;
 }

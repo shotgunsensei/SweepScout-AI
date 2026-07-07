@@ -74,6 +74,9 @@ function QueueItem({ item }: { item: EntryQueueItem }) {
           <p className="mt-2 text-sm text-muted">
             Ends {formatDate(item.sweepstake.endAt)} | Last submitted {formatDate(item.lastSubmittedAt)} | Form {item.sweepstake.formUrl ? "ready" : "not captured"}
           </p>
+          {item.sweepstake.emailAlias ? (
+            <p className="mt-2 break-all text-sm text-accent">Entry alias: {item.sweepstake.emailAlias}</p>
+          ) : null}
           <p className="mt-2 text-sm text-muted">{item.sweepstake.complianceNotes[0] ?? "Eligible for manual entry tracking."}</p>
         </div>
         <EntryActions sweepstake={item.sweepstake} submitted />
@@ -186,6 +189,7 @@ function EntryListPanel(props: { title: string; entries: EntryLog[]; empty: stri
                 <Badge tone={entryTone(entry.status)}>{titleCase(entry.status)}</Badge>
               </div>
               <p className="mt-2 text-sm text-muted">{formatDate(entry.submittedAt ?? entry.attemptedAt)}</p>
+              {entry.emailAlias ? <p className="mt-1 break-all text-sm text-accent">{entry.emailAlias}</p> : null}
               <p className="mt-1 text-sm text-muted">{entry.notes}</p>
               {entry.status === "submitted" ? (
                 <div className="mt-3 flex flex-wrap gap-2">

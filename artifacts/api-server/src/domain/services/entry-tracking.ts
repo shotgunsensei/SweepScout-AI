@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { writeAuditLog } from "@/lib/audit";
+import { ensureSweepstakeEmailAlias } from "@/lib/services/email-aliases";
 import { assertNoForbiddenSensitiveText } from "@/lib/profile-safety";
 import { assertEntryApproval } from "@/lib/safety";
 import { getStore } from "@/lib/storage/store";
@@ -38,6 +39,7 @@ export type MarkEntryStatusInput = {
   userApproved?: boolean;
   reviewConfirmed?: boolean;
   purchaseRequiredAcknowledged?: boolean;
+  timeSpentMinutes?: number;
   notes?: string;
 };
 
@@ -80,7 +82,11 @@ export function buildEntryTrackingData(sweepstakes: Sweepstake[], entries: Entry
 
 export async function markEntryStatus(input: MarkEntryStatusInput) {
   const store = await getStore();
-  const [sweepstake, entries] = await Promise.all([store.getSweepstake(input.sweepstakeId), store.listEntryLogs()]);
+  const [sweepstake, entries, settings] = await Promise.all([
+    store.getSweepstake(input.sweepstakeId),
+    store.listEntryLogs(),
+    store.getSettings(),
+  ]);
   if (!sweepstake) {
     throw new Error("Sweepstake not found.");
   }
@@ -105,17 +111,22 @@ export async function markEntryStatus(input: MarkEntryStatusInput) {
     }
   }
 
+  const aliasAssignment = await ensureSweepstakeEmailAlias(sweepstake);
+  const sweepstakeForEntry = aliasAssignment.sweepstake;
   const now = new Date().toISOString();
   const entry: EntryLog = {
     id: `entry-${randomUUID()}`,
-    sweepstakeId: sweepstake.id,
-    sweepstakeTitle: sweepstake.title,
+    sweepstakeId: sweepstakeForEntry.id,
+    sweepstakeTitle: sweepstakeForEntry.title,
     status: input.status,
     attemptedAt: now,
     submittedAt: input.status === "submitted" ? now : null,
     confirmationCode: null,
     notes,
-    formUrl: sweepstake.formUrl ?? sweepstake.extractedRules?.formUrl ?? sweepstake.url,
+    emailAlias: aliasAssignment.alias,
+    timeSpentMinutes: input.timeSpentMinutes ?? estimatedStatusMinutes(input.status, settings.roi.manualEntryMinutes),
+    prefillSavedMinutes: 0,
+    formUrl: sweepstakeForEntry.formUrl ?? sweepstakeForEntry.extractedRules?.formUrl ?? sweepstakeForEntry.url,
     screenshotPath: null,
     prefillFields: [],
     blockers: [],
@@ -138,6 +149,7 @@ export async function markEntryStatus(input: MarkEntryStatusInput) {
       hasCaptcha: sweepstake.hasCaptcha,
       purchaseRequired: sweepstake.purchaseRequired,
       noPurchaseMethodFound: sweepstake.noPurchaseMethodFound,
+      emailAlias: saved.emailAlias,
     },
   });
 
@@ -307,6 +319,13 @@ function defaultStatusNote(status: MarkEntryStatusInput["status"]) {
   if (status === "suspicious") return "User marked this sweepstake as suspicious.";
   if (status === "winner_notification") return "Winner notification received; follow up manually.";
   return "User marked this sweepstake as expired.";
+}
+
+function estimatedStatusMinutes(status: MarkEntryStatusInput["status"], manualEntryMinutes: number) {
+  if (status === "submitted") return manualEntryMinutes;
+  if (status === "winner_notification") return 3;
+  if (status === "suspicious" || status === "skipped") return 2;
+  return 1;
 }
 
 function parseDate(value: string | null | undefined) {

@@ -12,6 +12,9 @@ import type {
   EntryLog,
   EntryStatus,
   ExtractionJob,
+  InboxAlert,
+  RulesChangeAlert,
+  RulesSnapshot,
   Sweepstake,
   SweepstakeStatus,
   UserProfile,
@@ -58,6 +61,8 @@ class SupabaseStore implements SweepScoutStore {
       discoveryJobs: await this.listDiscoveryJobs(),
       assistantTasks: await this.listAssistantTasks(),
       entryLogs: await this.listEntryLogs(),
+      inboxAlerts: await this.listInboxAlerts(),
+      rulesChangeAlerts: await this.listRulesChangeAlerts(),
       settings: await this.getSettings(),
     });
   }
@@ -111,6 +116,7 @@ class SupabaseStore implements SweepScoutStore {
           rulesExtractedAt: sweepstake.rulesExtractedAt,
           source: sweepstake.source,
           riskFlags: sweepstake.riskFlags,
+          emailAlias: sweepstake.emailAlias,
         } satisfies Json,
         created_at: sweepstake.createdAt,
         updated_at: sweepstake.updatedAt,
@@ -204,7 +210,39 @@ class SupabaseStore implements SweepScoutStore {
       .select("*, sweepstakes(title, form_url, canonical_url, source_url)")
       .single();
     if (error) throw error;
-    return mapEntryAttemptRow(data as EntryAttemptRow);
+    return { ...mapEntryAttemptRow(data as EntryAttemptRow), emailAlias: entry.emailAlias ?? null };
+  }
+
+  async listInboxAlerts(): Promise<InboxAlert[]> {
+    return [];
+  }
+
+  async getInboxAlert(): Promise<InboxAlert | null> {
+    return null;
+  }
+
+  async saveInboxAlert(alert: InboxAlert): Promise<InboxAlert> {
+    return alert;
+  }
+
+  async listRulesSnapshots(): Promise<RulesSnapshot[]> {
+    return [];
+  }
+
+  async saveRulesSnapshot(snapshot: RulesSnapshot): Promise<RulesSnapshot> {
+    return snapshot;
+  }
+
+  async listRulesChangeAlerts(): Promise<RulesChangeAlert[]> {
+    return [];
+  }
+
+  async getRulesChangeAlert(): Promise<RulesChangeAlert | null> {
+    return null;
+  }
+
+  async saveRulesChangeAlert(alert: RulesChangeAlert): Promise<RulesChangeAlert> {
+    return alert;
   }
 
   async listExtractionJobs(): Promise<ExtractionJob[]> {
@@ -381,6 +419,7 @@ function mapSweepstakesRow(row: SweepstakesRow): Sweepstake {
     rulesText: nullableStringFrom(extracted.rulesText),
     rulesExtractedAt: nullableStringFrom(extracted.rulesExtractedAt),
     formUrl: row.form_url,
+    emailAlias: nullableStringFrom(extracted.emailAlias),
     extractedRules,
     scamScore: row.scam_score,
     eligibilityScore: numberFrom(extracted.eligibilityScore) ?? (row.status === "eligible" ? 90 : row.status === "ineligible" ? 20 : 50),
@@ -428,6 +467,9 @@ function mapEntryAttemptRow(row: EntryAttemptRow): EntryLog {
     submittedAt: row.submitted_at,
     confirmationCode: null,
     notes: row.notes ?? "",
+    emailAlias: null,
+    timeSpentMinutes: row.status === "prefilled" ? defaultSettings.roi.prefillReviewMinutes : defaultSettings.roi.manualEntryMinutes,
+    prefillSavedMinutes: row.status === "prefilled" ? defaultSettings.roi.prefillSavedMinutes : 0,
     formUrl: row.sweepstakes?.form_url ?? row.sweepstakes?.canonical_url ?? row.sweepstakes?.source_url ?? null,
     screenshotPath: row.screenshot_path,
     prefillFields: [],

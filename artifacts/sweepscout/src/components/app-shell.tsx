@@ -11,6 +11,8 @@ const nav: Array<{ href: string; label: string; icon: NavIconKey }> = [
   { href: "/dashboard/discovery", label: "Discovery", icon: "radar" },
   { href: "/dashboard/queue", label: "Queue", icon: "list" },
   { href: "/dashboard/entries", label: "Entries", icon: "clipboard" },
+  { href: "/dashboard/roi", label: "Prize ROI", icon: "roi" },
+  { href: "/dashboard/spam-sources", label: "Spam Sources", icon: "mail" },
   { href: "/scoring", label: "Scoring", icon: "gauge" },
   { href: "/dashboard/settings", label: "Settings", icon: "settings" },
   { href: "/dashboard/admin", label: "Admin", icon: "shield" },
@@ -21,6 +23,9 @@ const fallbackConfig: AppConfig = {
   openaiConfigured: false,
   openaiModel: "",
   supabaseConfigured: false,
+  inboxConfigured: false,
+  inboxProvider: "gmail",
+  inboxEmail: "",
   browserHeadless: true,
   warnings: [],
 };

@@ -9,10 +9,20 @@ import { scoreSweepstake } from "@/lib/scoring";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertNoForbiddenVaultFields, assertNoForbiddenVaultValues } from "@/lib/profile-safety";
 import { approveAssistantTask, recordEntryAttempt } from "@/lib/services/assistant";
+import { analyzeExtensionPage, saveExtensionPage } from "@/lib/services/browser-extension";
 import { runDiscoveryJob, createAndRunDiscovery } from "@/lib/services/discovery";
+import { generateMissingSweepstakeAliases, getSpamSourceReport } from "@/lib/services/email-aliases";
 import { getEntryTrackingData, markEntryStatus } from "@/lib/services/entry-tracking";
 import { runAssistedFormPrefill } from "@/lib/services/form-prefill";
+import { getInboxStatus, pollInboxNow, reviewInboxAlert } from "@/lib/services/inbox-monitor";
 import { runRulesExtraction } from "@/lib/services/openai-extraction";
+import { getRoiReport } from "@/lib/services/roi-report";
+import {
+  checkRulesNow,
+  getRulesMonitorStatus,
+  reviewRulesChangeAlert,
+  startRulesChangeMonitoring,
+} from "@/lib/services/rules-change-monitor";
 
 const router: IRouter = Router();
 
@@ -89,7 +99,7 @@ router.get("/sweepstakes", handler(async (_req, res) => {
 
 router.get("/sweepstakes/:id", handler(async (req, res) => {
   const store = await getStore();
-  const item = await store.getSweepstake(req.params.id);
+  const item = await store.getSweepstake(String(req.params.id ?? ""));
   if (!item) {
     fail(res, "Sweepstake not found.", 404);
     return;
@@ -156,6 +166,36 @@ router.get("/settings", handler(async (_req, res) => {
   const store = await getStore();
   const [settings, config] = await Promise.all([store.getSettings(), Promise.resolve(getAppConfig())]);
   ok(res, { settings, config, mode: store.mode });
+}));
+
+router.get("/inbox/status", handler(async (_req, res) => {
+  ok(res, await getInboxStatus());
+}));
+
+router.get("/inbox/alerts", handler(async (req, res) => {
+  const store = await getStore();
+  ok(res, await store.listInboxAlerts(Number(req.query.limit ?? 100)));
+}));
+
+router.get("/spam-report", handler(async (_req, res) => {
+  ok(res, await getSpamSourceReport());
+}));
+
+router.get("/roi-report", handler(async (_req, res) => {
+  ok(res, await getRoiReport());
+}));
+
+router.get("/rules-monitor/status", handler(async (_req, res) => {
+  ok(res, await getRulesMonitorStatus());
+}));
+
+router.get("/rules-monitor/alerts", handler(async (req, res) => {
+  const store = await getStore();
+  ok(res, await store.listRulesChangeAlerts(Number(req.query.limit ?? 100)));
+}));
+
+router.post("/extension/analyze", handler(async (req, res) => {
+  ok(res, await analyzeExtensionPage(req.body));
 }));
 
 router.get("/admin", handler(async (_req, res) => {
@@ -227,6 +267,7 @@ router.post("/entries/record", handler(async (req, res) => {
     userApproved: bool(req.body?.userApproved),
     reviewConfirmed: bool(req.body?.reviewConfirmed),
     purchaseRequiredAcknowledged: bool(req.body?.purchaseRequiredAcknowledged),
+    timeSpentMinutes: Number(req.body?.timeSpentMinutes || 0) || undefined,
     notes: String(req.body?.notes ?? ""),
   });
   ok(res, result);
@@ -239,6 +280,7 @@ router.post("/entries/status", handler(async (req, res) => {
     userApproved: bool(req.body?.userApproved),
     reviewConfirmed: bool(req.body?.reviewConfirmed),
     purchaseRequiredAcknowledged: bool(req.body?.purchaseRequiredAcknowledged),
+    timeSpentMinutes: Number(req.body?.timeSpentMinutes || 0) || undefined,
     notes: String(req.body?.notes ?? ""),
   });
   ok(res, result);
@@ -255,6 +297,40 @@ router.post("/forms/prefill", handler(async (req, res) => {
     formUrl: String(req.body?.formUrl ?? "") || undefined,
     userApproved: bool(req.body?.prefillApproved ?? req.body?.userApproved),
     useAiFallback: bool(req.body?.useAiFallback),
+  });
+  ok(res, result);
+}));
+
+router.post("/extension/save", handler(async (req, res) => {
+  ok(res, await saveExtensionPage(req.body));
+}));
+
+router.post("/inbox/poll", handler(async (_req, res) => {
+  ok(res, await pollInboxNow());
+}));
+
+router.post("/inbox/alerts/:id/review", handler(async (req, res) => {
+  const result = await reviewInboxAlert({
+    id: String(req.params.id ?? ""),
+    status: String(req.body?.status ?? "reviewed") as "new" | "reviewed" | "dismissed",
+    notes: String(req.body?.notes ?? ""),
+  });
+  ok(res, result);
+}));
+
+router.post("/aliases/generate", handler(async (_req, res) => {
+  ok(res, await generateMissingSweepstakeAliases());
+}));
+
+router.post("/rules-monitor/check", handler(async (req, res) => {
+  ok(res, await checkRulesNow({ sweepstakeId: String(req.body?.sweepstakeId ?? "") || undefined, force: true }));
+}));
+
+router.post("/rules-monitor/alerts/:id/review", handler(async (req, res) => {
+  const result = await reviewRulesChangeAlert({
+    id: String(req.params.id ?? ""),
+    status: String(req.body?.status ?? "reviewed") as "new" | "reviewed" | "dismissed",
+    notes: String(req.body?.notes ?? ""),
   });
   ok(res, result);
 }));
@@ -314,6 +390,7 @@ router.put("/profile", handler(async (req, res) => {
 router.put("/settings", handler(async (req, res) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   const store = await getStore();
+  const currentSettings = await store.getSettings();
   const saved = await store.saveSettings({
     automatedDiscoveryEnabled: bool(body.automatedDiscoveryEnabled),
     formPrefillEnabled: bool(body.formPrefillEnabled),
@@ -323,6 +400,43 @@ router.put("/settings", handler(async (req, res) => {
     requireApprovalForEveryEntry: true,
     dailyEntryLimit: Number(body.dailyEntryLimit ?? 12),
     notificationsEmail: String(body.notificationsEmail ?? ""),
+    emailAliases: {
+      ...currentSettings.emailAliases,
+      enabled: bool(body.emailAliasesEnabled),
+      baseEmail: String(body.emailAliasBaseEmail ?? currentSettings.emailAliases.baseEmail),
+      prefix: String(body.emailAliasPrefix ?? currentSettings.emailAliases.prefix),
+      nextSequence: Number(body.emailAliasNextSequence ?? currentSettings.emailAliases.nextSequence),
+      excessiveEmailThreshold: Number(
+        body.emailAliasExcessiveEmailThreshold ?? currentSettings.emailAliases.excessiveEmailThreshold,
+      ),
+      spamWindowDays: Number(body.emailAliasSpamWindowDays ?? currentSettings.emailAliases.spamWindowDays),
+    },
+    roi: {
+      ...currentSettings.roi,
+      manualEntryMinutes: Number(body.roiManualEntryMinutes ?? currentSettings.roi.manualEntryMinutes),
+      prefillReviewMinutes: Number(body.roiPrefillReviewMinutes ?? currentSettings.roi.prefillReviewMinutes),
+      prefillSavedMinutes: Number(body.roiPrefillSavedMinutes ?? currentSettings.roi.prefillSavedMinutes),
+      defaultWinProbabilityBasisPoints: Number(
+        body.roiDefaultWinProbabilityBasisPoints ?? currentSettings.roi.defaultWinProbabilityBasisPoints,
+      ),
+    },
+    rulesMonitor: {
+      ...currentSettings.rulesMonitor,
+      enabled: bool(body.rulesMonitorEnabled),
+      pollIntervalMinutes: Number(body.rulesMonitorPollIntervalMinutes ?? currentSettings.rulesMonitor.pollIntervalMinutes),
+      maxChecksPerRun: Number(body.rulesMonitorMaxChecksPerRun ?? currentSettings.rulesMonitor.maxChecksPerRun),
+    },
+    inbox: {
+      ...currentSettings.inbox,
+      enabled: bool(body.inboxEnabled),
+      provider: body.inboxProvider === "imap" ? "imap" : "gmail",
+      email: String(body.inboxEmail ?? ""),
+      host: String(body.inboxHost ?? ""),
+      port: Number(body.inboxPort ?? currentSettings.inbox.port),
+      mailbox: String(body.inboxMailbox ?? currentSettings.inbox.mailbox),
+      pollIntervalMinutes: Number(body.inboxPollIntervalMinutes ?? currentSettings.inbox.pollIntervalMinutes),
+      maxMessagesPerPoll: Number(body.inboxMaxMessagesPerPoll ?? currentSettings.inbox.maxMessagesPerPoll),
+    },
   });
   await writeAuditLog({
     actorId: null,
@@ -337,6 +451,7 @@ router.put("/settings", handler(async (req, res) => {
       requireApprovalForEveryEntry: saved.requireApprovalForEveryEntry,
     },
   });
+  await startRulesChangeMonitoring();
   ok(res, saved);
 }));
 

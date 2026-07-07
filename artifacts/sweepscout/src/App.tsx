@@ -5,6 +5,8 @@ import SweepstakesPage from "@/pages/sweepstakes";
 import DiscoveryPage from "@/pages/discovery";
 import QueuePage from "@/pages/queue";
 import EntriesPage from "@/pages/entries";
+import SpamSourcesPage from "@/pages/spam-sources";
+import RoiPage from "@/pages/roi";
 import EntryPrefillQueuePage from "@/pages/entries-queue";
 import EntryReviewPage from "@/pages/entry-review";
 import ScoringPage from "@/pages/scoring";
@@ -35,6 +37,8 @@ function Router() {
       <Route path="/dashboard/entries/queue" component={EntryPrefillQueuePage} />
       <Route path="/dashboard/entries/:id/review" component={EntryReviewPage} />
       <Route path="/dashboard/entries" component={EntriesPage} />
+      <Route path="/dashboard/spam-sources" component={SpamSourcesPage} />
+      <Route path="/dashboard/roi" component={RoiPage} />
       <Route path="/dashboard/settings" component={SettingsPage} />
       <Route path="/dashboard/admin" component={AdminPage} />
 
@@ -46,6 +50,8 @@ function Router() {
       <Route path="/discovery">{() => <Redirect to="/dashboard/discovery" />}</Route>
       <Route path="/queue">{() => <Redirect to="/dashboard/queue" />}</Route>
       <Route path="/entries">{() => <Redirect to="/dashboard/entries" />}</Route>
+      <Route path="/spam-sources">{() => <Redirect to="/dashboard/spam-sources" />}</Route>
+      <Route path="/roi">{() => <Redirect to="/dashboard/roi" />}</Route>
       <Route path="/settings">{() => <Redirect to="/dashboard/settings" />}</Route>
 
       <Route component={NotFound} />

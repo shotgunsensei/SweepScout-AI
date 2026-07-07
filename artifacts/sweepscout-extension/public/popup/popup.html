@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SweepScout Companion</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div>
+          <p class="eyebrow">SweepScout Companion</p>
+          <h1 id="page-title">Current page</h1>
+        </div>
+        <span id="connection-pill" class="pill muted">Checking</span>
+      </header>
+
+      <section class="panel" aria-live="polite">
+        <div class="score-row">
+          <div>
+            <span class="label">Detection</span>
+            <strong id="detection-score">Unknown</strong>
+          </div>
+          <div>
+            <span class="label">Risk</span>
+            <strong id="risk-score">Unknown</strong>
+          </div>
+        </div>
+        <p id="page-summary" class="summary">Open a sweepstakes page to see eligibility and risk signals.</p>
+        <div id="signals" class="tag-list"></div>
+      </section>
+
+      <section class="panel">
+        <label class="field">
+          <span>API base</span>
+          <input id="api-base" type="url" autocomplete="off" spellcheck="false" />
+        </label>
+        <label class="field">
+          <span>Dashboard URL</span>
+          <input id="dashboard-url" type="url" autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="button-grid">
+          <button id="save-config" type="button">Save Config</button>
+          <button id="sync-profile" type="button">Sync Approved Profile</button>
+        </div>
+        <p id="profile-state" class="fine-print">No approved profile synced.</p>
+      </section>
+
+      <section class="button-grid primary-actions">
+        <button id="save-page" type="button">Save Page</button>
+        <button id="prefill-page" type="button">Prefill</button>
+        <button id="open-dashboard" type="button">Dashboard</button>
+      </section>
+
+      <section id="status" class="status" role="status">Manual submit only. SweepScout never clicks final submit buttons.</section>
+    </main>
+    <script type="module" src="./popup.js"></script>
+  </body>
+</html>
