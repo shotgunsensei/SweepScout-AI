@@ -1,1 +1,1 @@
-- [SweepScout Vite+React migration](sweepscout-migration.md) — sweepscout frontend conventions: /api envelope unwrapping, onSubmit+FormData forms, manual-approval invariant, ui.tsx-vs-ui/-dir gotcha.
+- [OpenAI via Replit AI Integrations](openai-integration.md) — api-server reaches OpenAI through the Replit proxy (Responses API + strict json_schema); seed URLs 404 before the AI call.

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { writeAuditLog } from "@/lib/audit";
 import { getRegistrableDomain, isBlockedDomain } from "@/lib/discovery/url";
-import { AppConfigError, getAppConfig, requireOpenAIKey } from "@/lib/env";
+import { AppConfigError, getAppConfig, requireOpenAIAccess, type OpenAIAccess } from "@/lib/env";
 import { scoreSweepstake } from "@/lib/scoring";
 import { detectProtectionSignals } from "@/lib/safety";
 import { getStore } from "@/lib/storage/store";
@@ -87,7 +87,7 @@ export async function runRulesExtraction(sweepstakeId: string) {
   });
 
   try {
-    const apiKey = requireOpenAIKey();
+    const access = requireOpenAIAccess();
     console.info(`[extraction] Starting read-only extraction for ${sweepstake.id}`);
     const blockedDomainNames = (await store.listBlockedDomains()).map((domain) => domain.domain);
     if (isBlockedDomain(sweepstake.url, blockedDomainNames)) {
@@ -104,7 +104,7 @@ export async function runRulesExtraction(sweepstakeId: string) {
     });
 
     const source = await loadExtractionSource(sweepstake, blockedDomainNames);
-    const extracted = await extractRulesWithOpenAI({ apiKey, sweepstake, source });
+    const extracted = await extractRulesWithOpenAI({ access, sweepstake, source });
     const mergedExtraction = mergeObservedSignals(extracted, source);
     const riskAssessment = assessSuspiciousSignals(sweepstake, mergedExtraction, source);
     const profile = await store.getUserProfile();
@@ -330,15 +330,15 @@ async function fetchVisiblePage(url: string): Promise<LoadedHtml> {
 }
 
 async function extractRulesWithOpenAI(input: {
-  apiKey: string;
+  access: OpenAIAccess;
   sweepstake: Sweepstake;
   source: ExtractionSource;
 }): Promise<RulesExtractionData> {
   const config = getAppConfig();
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  const response = await fetch(`${input.access.baseUrl}/responses`, {
     method: "POST",
     headers: {
-      authorization: `Bearer ${input.apiKey}`,
+      authorization: `Bearer ${input.access.apiKey}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({

@@ -4,7 +4,7 @@ import path from "node:path";
 import { z } from "zod";
 import { writeAuditLog } from "@/lib/audit";
 import { isBlockedDomain } from "@/lib/discovery/url";
-import { getAppConfig, requireOpenAIKey } from "@/lib/env";
+import { getAppConfig, requireOpenAIAccess } from "@/lib/env";
 import { detectProtectionSignals } from "@/lib/safety";
 import { getStore } from "@/lib/storage/store";
 import type { EntryLog, PrefillFieldResult, PrefillProfileField, Sweepstake, UserProfile } from "@/lib/types";
@@ -430,10 +430,11 @@ async function mapAmbiguousFieldsWithAI(fields: DetectedField[]) {
   }
 
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const access = requireOpenAIAccess();
+    const response = await fetch(`${access.baseUrl}/responses`, {
       method: "POST",
       headers: {
-        authorization: `Bearer ${requireOpenAIKey()}`,
+        authorization: `Bearer ${access.apiKey}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({
