@@ -1,4 +1,5 @@
 import { getSpamSourceReport } from "@/lib/services/email-aliases";
+import { normalizePrizeCategory } from "@/lib/services/category-classifier";
 import { getStore } from "@/lib/storage/store";
 import type {
   AppSettings,
@@ -145,7 +146,7 @@ function buildCategorySummaries(input: {
   for (const entry of input.submittedEntries) {
     const sweepstake = sweepstakesById.get(entry.sweepstakeId);
     if (!sweepstake) continue;
-    const category = sweepstake.category || "unclassified";
+    const category = normalizePrizeCategory(sweepstake.category);
     const row =
       rows.get(category) ??
       {
@@ -167,12 +168,12 @@ function buildCategorySummaries(input: {
   for (const win of input.winEntries) {
     const sweepstake = sweepstakesById.get(win.sweepstakeId);
     if (!sweepstake) continue;
-    const row = rows.get(sweepstake.category || "unclassified");
+    const row = rows.get(normalizePrizeCategory(sweepstake.category));
     if (row) row.wins += 1;
   }
 
   for (const sweepstake of input.sweepstakes) {
-    const row = rows.get(sweepstake.category || "unclassified");
+    const row = rows.get(normalizePrizeCategory(sweepstake.category));
     if (row) row.spamAlerts += spamBySweepstake.get(sweepstake.id) ?? 0;
   }
 
@@ -204,7 +205,7 @@ function summarizeSweepstake(sweepstake: Sweepstake, submittedEntries: EntryLog[
     sweepstakeId: sweepstake.id,
     title: sweepstake.title,
     sponsor: sweepstake.sponsor,
-    category: sweepstake.category,
+    category: normalizePrizeCategory(sweepstake.category),
     prizeRetailValue: sweepstake.prizeRetailValue,
     deadline: sweepstake.endAt,
     eligibilityScore: sweepstake.eligibilityScore,

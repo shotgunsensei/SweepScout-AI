@@ -3,7 +3,14 @@ import { z } from "zod";
 import { writeAuditLog } from "@/lib/audit";
 import { getRegistrableDomain, normalizeDiscoveryUrl } from "@/lib/discovery/url";
 import { scoreSweepstake } from "@/lib/scoring";
+import { classifySweepstakeCategory } from "@/lib/services/category-classifier";
 import { ensureSweepstakeEmailAlias } from "@/lib/services/email-aliases";
+import {
+  applyReputationToSweepstake,
+  findSponsorReputationForSweepstake,
+  getSponsorReputationReport,
+} from "@/lib/services/sponsor-reputation";
+import { DEFAULT_ORGANIZATION_ID, assertCanSaveNewSweepstake } from "@/lib/services/tenancy";
 import { getStore } from "@/lib/storage/store";
 import type { RiskFlag, RulesExtractionData, Sweepstake } from "@/lib/types";
 
@@ -25,9 +32,11 @@ const extensionPageSchema = z
   .object({
     url: z.string().url(),
     title: z.string().trim().max(300).optional(),
+    sponsor: z.string().trim().max(200).optional(),
     text: z.string().max(MAX_TEXT_CHARS).optional(),
     rulesUrl: z.string().url().nullable().optional(),
     formUrl: z.string().url().nullable().optional(),
+    source: z.string().trim().max(80).optional(),
     detected: z.boolean().optional(),
     signals: z.array(z.string().trim().max(160)).max(40).optional(),
     suspiciousFields: z.array(extensionFieldSchema).max(MAX_FIELD_COUNT).optional(),
@@ -39,9 +48,14 @@ export type ExtensionPageInput = z.infer<typeof extensionPageSchema>;
 export async function analyzeExtensionPage(rawInput: unknown) {
   const input = extensionPageSchema.parse(rawInput);
   const store = await getStore();
-  const [profile, sweepstakes] = await Promise.all([store.getUserProfile(), store.listSweepstakes()]);
+  const [profile, sweepstakes, reputationReport] = await Promise.all([
+    store.getUserProfile(),
+    store.listSweepstakes(),
+    getSponsorReputationReport(),
+  ]);
   const draft = buildSweepstakeFromExtensionPage(input);
-  const scored = scoreSweepstake(draft, profile, undefined, sweepstakes);
+  const reputation = findSponsorReputationForSweepstake(draft, reputationReport);
+  const scored = scoreSweepstake(draft, profile, undefined, sweepstakes, reputation);
   const sweepstake: Sweepstake = {
     ...draft,
     ...scored,
@@ -50,19 +64,21 @@ export async function analyzeExtensionPage(rawInput: unknown) {
     complianceNotes: scored.complianceNotes,
     updatedAt: new Date().toISOString(),
   };
+  const reputationAdjusted = applyReputationToSweepstake(sweepstake, reputation);
   const existing = findExistingSweepstake(sweepstakes, sweepstake.url, sweepstake.formUrl);
 
   return {
     detected: Boolean(input.detected) || inferDetected(input),
     existingSweepstakeId: existing?.id ?? null,
-    sweepstake,
+    sweepstake: reputationAdjusted,
     score: {
-      status: sweepstake.status,
-      scamScore: sweepstake.scamScore,
-      eligibilityScore: sweepstake.eligibilityScore,
-      riskFlags: sweepstake.riskFlags,
-      complianceNotes: sweepstake.complianceNotes,
+      status: reputationAdjusted.status,
+      scamScore: reputationAdjusted.scamScore,
+      eligibilityScore: reputationAdjusted.eligibilityScore,
+      riskFlags: reputationAdjusted.riskFlags,
+      complianceNotes: reputationAdjusted.complianceNotes,
     },
+    reputation,
   };
 }
 
@@ -93,6 +109,7 @@ export async function saveExtensionPage(rawInput: unknown) {
     };
   }
 
+  await assertCanSaveNewSweepstake();
   const saved = await store.saveSweepstake({
     ...analysis.sweepstake,
     id: extensionSweepstakeId(analysis.sweepstake.url),
@@ -133,15 +150,28 @@ function buildSweepstakeFromExtensionPage(input: ExtensionPageInput): Sweepstake
   const extractedRules = buildExtractedRules(input, title, domain, text);
   const riskFlags = extensionRiskFlags(input, text);
   const prizeValue = extractedRules.approximateRetailValue;
+  const sponsor = cleanSponsor(input.sponsor) ?? inferSponsor(domain, text);
+  const noPurchaseMethodFound = !/\bno\s+purchase\s+necessary\b/i.test(text);
 
   return {
     id: extensionSweepstakeId(normalizedUrl),
+    organizationId: DEFAULT_ORGANIZATION_ID,
     title,
-    sponsor: inferSponsor(domain, text),
+    sponsor,
     url: normalizedUrl,
-    source: "chrome-extension",
+    source: input.source || "chrome-extension",
     status: "needs_review",
-    category: inferCategory(text),
+    category: classifySweepstakeCategory({
+      title,
+      sponsor,
+      url: normalizedUrl,
+      rulesText: text,
+      extractedRules,
+      riskFlags,
+      prizeRetailValue: prizeValue,
+      purchaseRequired: extractedRules.purchaseOrPaymentRequested,
+      noPurchaseMethodFound,
+    }),
     prizeRetailValue: prizeValue,
     country: "US",
     stateEligibility: inferStates(text),
@@ -150,7 +180,7 @@ function buildSweepstakeFromExtensionPage(input: ExtensionPageInput): Sweepstake
     endAt: extractedRules.deadline,
     entryFrequency: extractedRules.entryFrequency ?? inferEntryFrequency(text),
     purchaseRequired: extractedRules.purchaseOrPaymentRequested,
-    noPurchaseMethodFound: !/\bno\s+purchase\s+necessary\b/i.test(text),
+    noPurchaseMethodFound,
     hasCaptcha: /\b(captcha|recaptcha|hcaptcha|cf-turnstile)\b/i.test(text),
     requiresAccount: /\b(create an account|sign in|log in|login required|account required)\b/i.test(text),
     eligibilitySummary: extractedRules.eligibility ?? "Captured from browser extension; review official rules before entering.",
@@ -159,6 +189,10 @@ function buildSweepstakeFromExtensionPage(input: ExtensionPageInput): Sweepstake
     rulesExtractedAt: text ? now : null,
     formUrl: input.formUrl ?? input.url,
     emailAlias: null,
+    localRegion: null,
+    locationEligibilityScore: 50,
+    locationEligibilityNotes: ["Location eligibility is unclear until official rules are extracted."],
+    requiresInPersonAppearance: false,
     extractedRules,
     scamScore: 0,
     eligibilityScore: 0,
@@ -254,6 +288,12 @@ function cleanTitle(value: string | undefined) {
   return cleaned.slice(0, 140);
 }
 
+function cleanSponsor(value: string | undefined) {
+  const cleaned = value?.replace(/\s+/g, " ").trim();
+  if (!cleaned) return null;
+  return cleaned.slice(0, 120);
+}
+
 function inferTitleFromUrl(value: string) {
   const url = new URL(value);
   const path = url.pathname
@@ -268,16 +308,6 @@ function inferTitleFromUrl(value: string) {
 function inferSponsor(domain: string, text: string) {
   const sponsorMatch = text.match(/\bSponsor(?:ed by)?\s*:?\s*([A-Z][A-Za-z0-9&.,' -]{2,90})/);
   return sponsorMatch?.[1]?.trim() || titleCase(domain.split(".")[0] ?? domain);
-}
-
-function inferCategory(text: string) {
-  const lower = text.toLowerCase();
-  if (/\b(travel|trip|vacation|flight|hotel|resort|cruise)\b/.test(lower)) return "travel";
-  if (/\b(cash|gift card|visa|mastercard|check)\b/.test(lower)) return "cash";
-  if (/\b(car|truck|vehicle|auto|automotive)\b/.test(lower)) return "automotive";
-  if (/\b(phone|laptop|tv|camera|electronics|console)\b/.test(lower)) return "electronics";
-  if (/\b(kitchen|home|appliance|furniture)\b/.test(lower)) return "home";
-  return "unclassified";
 }
 
 function inferPrizeSummary(text: string) {

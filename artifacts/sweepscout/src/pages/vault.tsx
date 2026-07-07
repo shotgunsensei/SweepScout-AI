@@ -6,6 +6,7 @@ import { ErrorNotice, LoadingState } from "@/components/dashboard-kit";
 import { Badge, Checkbox, PageHeader, Panel, SubmitButton, TextInput } from "@/components/ui";
 import { apiGet } from "@/lib/api";
 import { formToObject, useApiMutation } from "@/lib/forms";
+import { categoryLabel, PRIZE_CATEGORIES } from "@/lib/prize-categories";
 import type { UserProfile } from "@/lib/types";
 
 const profileVaultWarning =
@@ -104,16 +105,58 @@ function VaultBody({ profile }: { profile: UserProfile }) {
           <section className="grid gap-3">
             <SectionHeading icon={<LockKeyhole size={18} aria-hidden />} title="Preferences and consent" />
             <div className="grid gap-3 md:grid-cols-2">
-              <Field label="Preferred sweepstakes categories" hint="Comma separated, for discovery and scoring filters.">
-                <TextInput name="categories" defaultValue={profile.preferences.categories.join(", ")} />
+              <Field
+                label="Category priority order"
+                hint="Comma separated. Categories listed first rank higher in the daily entry queue."
+              >
+                <TextInput
+                  name="categories"
+                  defaultValue={profile.preferences.categories.join(", ")}
+                  placeholder="cash, gift card, electronics, travel"
+                />
               </Field>
               <Field label="Max daily entries">
                 <TextInput name="maxDailyEntries" type="number" min={1} max={100} defaultValue={profile.preferences.maxDailyEntries} />
               </Field>
+              <Field
+                label="Nearby metro areas"
+                hint="Comma separated. Used for local radio, dealership, grocery, chamber, fair, and sports team discovery."
+              >
+                <TextInput
+                  name="nearbyMetros"
+                  defaultValue={profile.preferences.nearbyMetros.join(", ")}
+                  placeholder="New York City, Long Island, Hudson Valley"
+                />
+              </Field>
+            </div>
+            <div className="grid gap-3 rounded-md border border-line bg-panel-strong p-4">
+              <div>
+                <p className="text-xs font-semibold uppercase text-muted">Current queue priority</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {profile.preferences.categories.map((category, index) => (
+                    <Badge key={`${category}-${index}`} tone={index < 3 ? "ok" : "default"}>
+                      {index + 1}. {categoryLabel(category)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase text-muted">Supported categories</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {PRIZE_CATEGORIES.map((category) => (
+                    <Badge key={category}>{categoryLabel(category)}</Badge>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="flex flex-wrap gap-4">
               <Checkbox name="avoidPurchaseRequired" label="Avoid purchase-required promotions" defaultChecked={profile.preferences.avoidPurchaseRequired} />
               <Checkbox name="allowSocialActions" label="Allow sweepstakes that require social actions" defaultChecked={profile.preferences.allowSocialActions} />
+              <Checkbox
+                name="allowInPersonContests"
+                label="Include contests requiring in-person appearance or pickup"
+                defaultChecked={profile.preferences.allowInPersonContests}
+              />
             </div>
             <div className="rounded-md border border-line bg-panel-strong p-4">
               <Checkbox name="consentToPrefill" label="Enable form prefill from this vault" defaultChecked={profile.consentToPrefill} />

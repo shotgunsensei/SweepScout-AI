@@ -5,6 +5,7 @@ import { EmptyState, ErrorNotice, LoadingState, SectionHeader } from "@/componen
 import { Badge, MetricCard, PageHeader, Panel } from "@/components/ui";
 import { apiGet } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { categoryLabel } from "@/lib/prize-categories";
 import type { RoiCategorySummary, RoiReport, RoiSweepstakeSummary, RoiVolumePoint } from "@/lib/types";
 
 export default function RoiPage() {
@@ -150,7 +151,7 @@ function CategoryRow({ category }: { category: RoiCategorySummary }) {
   return (
     <div className="rounded-md border border-line bg-panel-strong p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium text-foreground">{category.category}</p>
+        <p className="font-medium text-foreground">{categoryLabel(category.category)}</p>
         <Badge tone={category.spamAlerts > 0 ? "warn" : "ok"}>{formatCurrency(category.expectedValue)}</Badge>
       </div>
       <div className="mt-3 grid gap-2 text-sm text-muted sm:grid-cols-4">
@@ -179,7 +180,7 @@ function SweepstakeList({ items, empty, showDeadline }: { items: RoiSweepstakeSu
               </Badge>
             </div>
             <p className="mt-2 text-xs text-muted">
-              {item.category} | Entries {item.entryCount}
+              {categoryLabel(item.category)} | Entries {item.entryCount}
               {showDeadline ? ` | Deadline ${formatDate(item.deadline)}` : ""}
             </p>
           </div>

@@ -40,11 +40,85 @@ export type InboxLinkKind = "claim" | "verification" | "confirmation" | "unsubsc
 export type RulesChangeAlertStatus = "new" | "reviewed" | "dismissed";
 export type RulesChangeSeverity = "info" | "warn" | "danger";
 export type RulesChangeField = "deadline" | "eligibility" | "prize" | "entry_frequency";
+export type DiscoveryScope = "general" | "local";
+export type PlanTier = "free" | "pro" | "power";
+export type MembershipRole = "owner" | "admin" | "member";
+export type MembershipStatus = "active" | "invited" | "disabled";
+export type SubscriptionStatus = "none" | "trialing" | "active" | "past_due" | "canceled" | "incomplete";
+export type PrizeCategory =
+  | "cash"
+  | "vehicle"
+  | "electronics"
+  | "travel"
+  | "home goods"
+  | "gift card"
+  | "tools"
+  | "gaming"
+  | "food/restaurant"
+  | "local business"
+  | "high-risk/unclear";
 
 export type RiskFlag = {
   code: string;
   label: string;
   severity: "low" | "medium" | "high";
+};
+
+export type PlanLimits = {
+  tier: PlanTier;
+  name: string;
+  monthlyPriceUsd: number;
+  manualTracker: boolean;
+  discovery: boolean;
+  scoring: boolean;
+  prefill: boolean;
+  inboxMonitoring: boolean;
+  browserExtension: boolean;
+  advancedReporting: boolean;
+  savedSweepstakes: number;
+  discoveryJobsPerMonth: number;
+};
+
+export type Organization = {
+  id: string;
+  name: string;
+  slug: string;
+  planTier: PlanTier;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OrganizationMembership = {
+  id: string;
+  organizationId: string;
+  userId: string;
+  email: string;
+  role: MembershipRole;
+  status: MembershipStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BillingSubscription = {
+  id: string;
+  organizationId: string;
+  tier: PlanTier;
+  status: SubscriptionStatus;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  updatedAt: string;
+};
+
+export type UsageSnapshot = {
+  organizationId: string;
+  tier: PlanTier;
+  limits: PlanLimits;
+  savedSweepstakes: number;
+  discoveryJobsThisMonth: number;
+  usagePeriodStart: string;
+  usagePeriodEnd: string;
 };
 
 export type SweepstakesRules = {
@@ -90,12 +164,13 @@ export type RulesExtractionData = {
 
 export type Sweepstake = {
   id: string;
+  organizationId: string;
   title: string;
   sponsor: string;
   url: string;
   source: string;
   status: SweepstakeStatus;
-  category: string;
+  category: PrizeCategory;
   prizeRetailValue: number | null;
   country: string;
   stateEligibility: string[];
@@ -113,6 +188,10 @@ export type Sweepstake = {
   rulesExtractedAt: string | null;
   formUrl: string | null;
   emailAlias: string | null;
+  localRegion: string | null;
+  locationEligibilityScore: number;
+  locationEligibilityNotes: string[];
+  requiresInPersonAppearance: boolean;
   extractedRules?: RulesExtractionData | null;
   scamScore: number;
   eligibilityScore: number;
@@ -124,6 +203,7 @@ export type Sweepstake = {
 
 export type DiscoveryJob = {
   id: string;
+  organizationId: string;
   label: string;
   query: string;
   seeds: string[];
@@ -132,10 +212,12 @@ export type DiscoveryJob = {
   lastRunAt: string | null;
   createdAt: string;
   notes: string;
+  scope?: DiscoveryScope;
 };
 
 export type ExtractionJob = {
   id: string;
+  organizationId: string;
   sweepstakeId: string;
   status: JobStatus;
   summary: string | null;
@@ -147,6 +229,7 @@ export type ExtractionJob = {
 
 export type AssistantTask = {
   id: string;
+  organizationId: string;
   sweepstakeId: string;
   sweepstakeTitle: string;
   status: AssistantStatus;
@@ -161,6 +244,7 @@ export type AssistantTask = {
 
 export type EntryLog = {
   id: string;
+  organizationId: string;
   sweepstakeId: string;
   sweepstakeTitle: string;
   status: EntryStatus;
@@ -219,10 +303,12 @@ export type UserProfile = {
   postalCode: string;
   consentToPrefill: boolean;
   preferences: {
-    categories: string[];
+    categories: PrizeCategory[];
+    nearbyMetros: string[];
     maxDailyEntries: number;
     avoidPurchaseRequired: boolean;
     allowSocialActions: boolean;
+    allowInPersonContests: boolean;
   };
   updatedAt: string;
 };
@@ -291,6 +377,7 @@ export type InboxLink = {
 
 export type InboxAlert = {
   id: string;
+  organizationId: string;
   messageId: string;
   provider: InboxProvider;
   mailbox: string;
@@ -371,6 +458,45 @@ export type SpamSourceReport = {
   aliases: AliasInventoryItem[];
 };
 
+export type SponsorReputationRiskLevel = "low" | "medium" | "high" | "critical";
+export type SponsorReputationRecommendation = "allow" | "downrank" | "block";
+
+export type SponsorReputationMetrics = {
+  sweepstakesCount: number;
+  inboxAlertCount: number;
+  spamComplaints: number;
+  suspiciousFields: number;
+  phishingFlags: number;
+  excessiveEmailVolume: number;
+  misleadingPrizeLanguage: number;
+  duplicateSweepstakes: number;
+  missingOfficialRules: number;
+  userBlockedSponsor: number;
+};
+
+export type SponsorDomainReputation = {
+  domain: string;
+  sponsor: string | null;
+  riskScore: number;
+  riskLevel: SponsorReputationRiskLevel;
+  recommendation: SponsorReputationRecommendation;
+  reasons: string[];
+  metrics: SponsorReputationMetrics;
+  lastSeenAt: string | null;
+  updatedAt: string;
+};
+
+export type SponsorReputationReport = {
+  generatedAt: string;
+  records: SponsorDomainReputation[];
+  totals: {
+    domainsTracked: number;
+    downrankedDomains: number;
+    blockedDomains: number;
+    criticalDomains: number;
+  };
+};
+
 export type RoiVolumePoint = {
   label: string;
   count: number;
@@ -435,6 +561,39 @@ export type RoiReport = {
   worstSpamSources: RoiSpamSourceSummary[];
 };
 
+export type ComplianceDecisionHistoryItem = {
+  entryId: string;
+  status: EntryStatus;
+  attemptedAt: string;
+  submittedAt: string | null;
+  userApproved: boolean;
+  purchaseRequiredAcknowledged: boolean;
+  notes: string;
+  confirmationCode: string | null;
+};
+
+export type ComplianceSweepstakeReport = {
+  sweepstakeId: string;
+  title: string;
+  status: SweepstakeStatus;
+  officialRulesUrl: string | null;
+  sourceUrl: string;
+  sponsor: string;
+  entryFrequency: string;
+  noPurchaseMethod: string;
+  eligibility: string;
+  deadline: string | null;
+  extractedRiskNotes: string[];
+  userDecisionHistory: ComplianceDecisionHistoryItem[];
+  submissionTimestamps: string[];
+  generatedAt: string;
+};
+
+export type ComplianceReport = {
+  generatedAt: string;
+  reports: ComplianceSweepstakeReport[];
+};
+
 export type RulesSnapshotExtraction = {
   deadline: string | null;
   eligibility: string | null;
@@ -445,6 +604,7 @@ export type RulesSnapshotExtraction = {
 
 export type RulesSnapshot = {
   id: string;
+  organizationId: string;
   sweepstakeId: string;
   sweepstakeTitle: string;
   rulesUrl: string;
@@ -464,6 +624,7 @@ export type RulesFieldChange = {
 
 export type RulesChangeAlert = {
   id: string;
+  organizationId: string;
   sweepstakeId: string;
   sweepstakeTitle: string;
   sponsor: string;
@@ -484,6 +645,7 @@ export type RulesChangeAlert = {
 
 export type BlockedDomain = {
   id: string;
+  organizationId: string;
   domain: string;
   reason: string;
   createdAt: string;
@@ -491,6 +653,7 @@ export type BlockedDomain = {
 
 export type AuditLog = {
   id: string;
+  organizationId: string;
   actorId: string | null;
   action: string;
   entityType: string;
@@ -523,6 +686,9 @@ export type DashboardData = {
   inboxAlerts: InboxAlert[];
   rulesChangeAlerts: RulesChangeAlert[];
   settings: AppSettings;
+  organization: Organization;
+  subscription: BillingSubscription;
+  usage: UsageSnapshot;
 };
 
 export type EntryFrequency = "daily" | "weekly" | "monthly" | "one_time" | "unknown";
@@ -535,6 +701,8 @@ export type EntryQueueItem = {
   nextEntryAt: string | null;
   lastSubmittedAt: string | null;
   blockedReason: string | null;
+  categoryPriority: number;
+  categoryPreferred: boolean;
 };
 
 export type ReminderDay = {
@@ -552,6 +720,24 @@ export type EntryTrackingData = {
   reminders: ReminderDay[];
 };
 
+export type DailyWorkflowData = {
+  generatedAt: string;
+  todaysRepeatableEntries: EntryQueueItem[];
+  newEligibleSweepstakes: Sweepstake[];
+  expiringSoon: EntryQueueItem[];
+  winnerVerificationEmails: InboxAlert[];
+  suspiciousItems: Array<{ sweepstake: Sweepstake; latestEntry: EntryLog | null; reason: string }>;
+  suspiciousInboxAlerts: InboxAlert[];
+  prefillNext: { sweepstake: Sweepstake; formUrl: string } | null;
+  stats: {
+    todaysRepeatableCount: number;
+    newEligibleCount: number;
+    expiringSoonCount: number;
+    winnerVerificationCount: number;
+    suspiciousDecisionCount: number;
+  };
+};
+
 export type AppConfig = {
   mode: "sqlite" | "supabase";
   openaiConfigured: boolean;
@@ -567,4 +753,54 @@ export type AppConfig = {
 export type AdminSession = {
   role: string;
   label: string;
+};
+
+export type SaaSAdminSummary = {
+  organization: Organization;
+  membership: OrganizationMembership;
+  subscription: BillingSubscription;
+  usage: UsageSnapshot;
+  plans: PlanLimits[];
+  stripe: {
+    configured: boolean;
+    publishableKeyConfigured: boolean;
+    webhookSecretConfigured: boolean;
+    priceIds: Record<PlanTier, string | null>;
+  };
+  manualApprovalRequired: boolean;
+};
+
+export type ImportSource = "csv" | "url_list" | "bookmarks" | "manual" | "text";
+export type ImportExtractionStatus = "completed" | "needs_review" | "needs_upgrade" | "failed" | "skipped";
+export type ImportResultStatus = "created" | "updated" | "failed";
+
+export type ImportItemResult = {
+  inputUrl: string;
+  normalizedUrl: string | null;
+  title: string | null;
+  status: ImportResultStatus;
+  created: boolean;
+  sweepstakeId: string | null;
+  sweepstakeStatus: SweepstakeStatus | null;
+  scamScore: number | null;
+  eligibilityScore: number | null;
+  queuePlacement: "entry_queue" | "review_queue" | "blocked" | "failed";
+  extractionStatus: ImportExtractionStatus;
+  message: string;
+};
+
+export type ImportRunReport = {
+  source: ImportSource;
+  generatedAt: string;
+  totals: {
+    parsed: number;
+    processed: number;
+    created: number;
+    updated: number;
+    failed: number;
+    extracted: number;
+    queuedForEntry: number;
+    queuedForReview: number;
+  };
+  items: ImportItemResult[];
 };

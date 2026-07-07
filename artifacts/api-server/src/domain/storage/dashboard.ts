@@ -5,8 +5,11 @@ import type {
   DiscoveryJob,
   EntryLog,
   InboxAlert,
+  BillingSubscription,
+  Organization,
   RulesChangeAlert,
   Sweepstake,
+  UsageSnapshot,
 } from "@/lib/types";
 
 export function buildDashboardData(input: {
@@ -17,6 +20,9 @@ export function buildDashboardData(input: {
   inboxAlerts: InboxAlert[];
   rulesChangeAlerts: RulesChangeAlert[];
   settings: AppSettings;
+  organization: Organization;
+  subscription: BillingSubscription;
+  usage: UsageSnapshot;
 }): DashboardData {
   const now = Date.now();
   const sevenDays = 7 * 24 * 60 * 60 * 1000;

@@ -1,4 +1,4 @@
-import { Ban, Download, FileJson, FileSearch, ListChecks, RefreshCw, ShieldAlert } from "lucide-react";
+import { Ban, Building2, CreditCard, Download, FileJson, FileSearch, ListChecks, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { Badge, MetricCard, PageHeader, Panel, SubmitButton, TextInput } from "@/components/ui";
@@ -6,7 +6,19 @@ import { LoadingState } from "@/components/dashboard-kit";
 import { apiGet, apiUrl } from "@/lib/api";
 import { formToObject, useApiMutation } from "@/lib/forms";
 import { formatDate, titleCase } from "@/lib/format";
-import type { AdminSession, AppConfig, AuditLog, BlockedDomain, DiscoveryJob, EntryLog, ExtractionJob, Sweepstake } from "@/lib/types";
+import type {
+  AdminSession,
+  AppConfig,
+  AuditLog,
+  BlockedDomain,
+  DiscoveryJob,
+  EntryLog,
+  ExtractionJob,
+  SaaSAdminSummary,
+  SponsorDomainReputation,
+  SponsorReputationReport,
+  Sweepstake,
+} from "@/lib/types";
 
 type AdminResponse = {
   admin: AdminSession;
@@ -16,6 +28,8 @@ type AdminResponse = {
   blockedDomains: BlockedDomain[];
   entries: EntryLog[];
   auditLogs: AuditLog[];
+  saas: SaaSAdminSummary;
+  reputation: SponsorReputationReport;
   config: AppConfig;
 };
 
@@ -39,7 +53,7 @@ export default function AdminPage() {
 }
 
 function AdminBody({ data }: { data: AdminResponse }) {
-  const { admin, discoveryJobs, extractionJobs, sweepstakes, blockedDomains, entries, auditLogs, config } = data;
+  const { admin, discoveryJobs, extractionJobs, sweepstakes, blockedDomains, entries, auditLogs, saas, reputation, config } = data;
   const byId = new Map(sweepstakes.map((item) => [item.id, item]));
   const failedUrls = extractionJobs
     .filter((job) => job.status === "failed" || job.status === "needs_review")
@@ -63,6 +77,10 @@ function AdminBody({ data }: { data: AdminResponse }) {
         <MetricCard label="Blocked Domains" value={blockedDomains.length} sublabel="Discovery blacklist" />
         <MetricCard label="Audit Logs" value={auditLogs.length} sublabel="Recent safety events" />
       </div>
+
+      <SaaSOperationsPanel summary={saas} />
+
+      <SponsorReputationPanel report={reputation} />
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <Panel>
@@ -181,6 +199,178 @@ function AdminBody({ data }: { data: AdminResponse }) {
         CSV export currently includes {entries.length} entry log record{entries.length === 1 ? "" : "s"} available to this owner store.
       </p>
     </AppShell>
+  );
+}
+
+function SaaSOperationsPanel({ summary }: { summary: SaaSAdminSummary }) {
+  const savedLimit = summary.usage.limits.savedSweepstakes;
+  const discoveryLimit = summary.usage.limits.discoveryJobsPerMonth;
+  const savedPercent = savedLimit ? Math.min(100, Math.round((summary.usage.savedSweepstakes / savedLimit) * 100)) : 0;
+  const discoveryPercent = discoveryLimit
+    ? Math.min(100, Math.round((summary.usage.discoveryJobsThisMonth / discoveryLimit) * 100))
+    : summary.usage.discoveryJobsThisMonth > 0
+      ? 100
+      : 0;
+  const features = [
+    ["Manual tracker", summary.usage.limits.manualTracker],
+    ["Discovery", summary.usage.limits.discovery],
+    ["Scoring", summary.usage.limits.scoring],
+    ["Prefill", summary.usage.limits.prefill],
+    ["Inbox monitoring", summary.usage.limits.inboxMonitoring],
+    ["Browser extension", summary.usage.limits.browserExtension],
+    ["Advanced reports", summary.usage.limits.advancedReporting],
+  ] as const;
+
+  return (
+    <Panel className="mb-4">
+      <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <div>
+          <SectionTitle icon={<Building2 size={18} aria-hidden />} title="Tenant & Plan" />
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <MetricCard label="Organization" value={summary.organization.name} sublabel={summary.organization.slug} />
+            <MetricCard label="Plan" value={summary.usage.limits.name} sublabel={`$${summary.usage.limits.monthlyPriceUsd}/mo tier`} />
+            <MetricCard label="Role" value={titleCase(summary.membership.role)} sublabel={summary.membership.email} />
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <UsageMeter
+              label="Saved sweepstakes"
+              value={summary.usage.savedSweepstakes}
+              limit={savedLimit}
+              percent={savedPercent}
+            />
+            <UsageMeter
+              label="Discovery jobs this month"
+              value={summary.usage.discoveryJobsThisMonth}
+              limit={discoveryLimit}
+              percent={discoveryPercent}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-4">
+          <div>
+            <SectionTitle icon={<CreditCard size={18} aria-hidden />} title="Billing Readiness" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <StatusTile label="Stripe secret" ok={summary.stripe.configured} />
+              <StatusTile label="Publishable key" ok={summary.stripe.publishableKeyConfigured} />
+              <StatusTile label="Webhook secret" ok={summary.stripe.webhookSecretConfigured} />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Badge tone={summary.stripe.priceIds.pro ? "ok" : "warn"}>Pro price {summary.stripe.priceIds.pro ? "set" : "missing"}</Badge>
+              <Badge tone={summary.stripe.priceIds.power ? "ok" : "warn"}>Power price {summary.stripe.priceIds.power ? "set" : "missing"}</Badge>
+              <Badge tone={summary.subscription.status === "active" || summary.subscription.status === "trialing" ? "ok" : "default"}>
+                Subscription {titleCase(summary.subscription.status)}
+              </Badge>
+            </div>
+          </div>
+
+          <div>
+            <SectionTitle icon={<ShieldCheck size={18} aria-hidden />} title="Plan Gates & Safety" />
+            <div className="mt-4 flex flex-wrap gap-2">
+              {features.map(([label, enabled]) => (
+                <Badge key={label} tone={enabled ? "ok" : "default"}>
+                  {enabled ? "Enabled" : "Locked"}: {label}
+                </Badge>
+              ))}
+              <Badge tone={summary.manualApprovalRequired ? "ok" : "danger"}>
+                Manual approval {summary.manualApprovalRequired ? "required" : "not enforced"}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function SponsorReputationPanel({ report }: { report: SponsorReputationReport }) {
+  const highRisk = report.records.filter((record) => record.recommendation !== "allow").slice(0, 6);
+  return (
+    <Panel className="mb-4">
+      <SectionTitle icon={<ShieldAlert size={18} aria-hidden />} title="Sponsor & Domain Reputation" />
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <MetricCard label="Domains Tracked" value={report.totals.domainsTracked} sublabel="global reputation records" />
+        <MetricCard label="Downranked" value={report.totals.downrankedDomains} sublabel="future entries deprioritized" />
+        <MetricCard label="Blocked" value={report.totals.blockedDomains} sublabel="discovery skips these" />
+        <MetricCard label="Critical" value={report.totals.criticalDomains} sublabel="90+ risk score" />
+      </div>
+      <div className="mt-4 grid gap-3 xl:grid-cols-2">
+        {highRisk.length ? (
+          highRisk.map((record) => <ReputationCard key={record.domain} record={record} />)
+        ) : (
+          <p className="text-sm text-muted">No sponsor or domain has crossed the downrank threshold yet.</p>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+function ReputationCard({ record }: { record: SponsorDomainReputation }) {
+  const tone = record.riskLevel === "critical" || record.recommendation === "block" ? "danger" : record.riskLevel === "high" ? "warn" : "default";
+  const metrics = [
+    ["spam", record.metrics.spamComplaints],
+    ["phishing", record.metrics.phishingFlags],
+    ["fields", record.metrics.suspiciousFields],
+    ["emails", record.metrics.excessiveEmailVolume],
+    ["duplicates", record.metrics.duplicateSweepstakes],
+    ["missing rules", record.metrics.missingOfficialRules],
+    ["blocked", record.metrics.userBlockedSponsor],
+  ].filter(([, value]) => Number(value) > 0);
+  return (
+    <div className="rounded-md border border-line bg-panel-strong p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-sm font-semibold text-foreground">{record.domain}</p>
+          <p className="mt-1 text-xs text-muted">{record.sponsor ?? "Sponsor unknown"}</p>
+        </div>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Badge tone={tone}>{record.riskScore}/100</Badge>
+          <Badge tone={record.recommendation === "block" ? "danger" : record.recommendation === "downrank" ? "warn" : "default"}>
+            {titleCase(record.recommendation)}
+          </Badge>
+        </div>
+      </div>
+      {metrics.length ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {metrics.map(([label, value]) => (
+            <Badge key={label}>{label}: {value}</Badge>
+          ))}
+        </div>
+      ) : null}
+      {record.reasons.length ? (
+        <ul className="mt-3 list-disc space-y-1 pl-4 text-xs leading-5 text-muted">
+          {record.reasons.slice(0, 3).map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function UsageMeter(props: { label: string; value: number; limit: number; percent: number }) {
+  const limitLabel = props.limit === 0 ? "0 included" : `${props.limit.toLocaleString()} limit`;
+  return (
+    <div className="rounded-md border border-line bg-panel-strong p-3">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="text-muted">{props.label}</span>
+        <span className="font-medium text-foreground">
+          {props.value.toLocaleString()} / {limitLabel}
+        </span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded bg-panel">
+        <div className="h-full rounded bg-accent" style={{ width: `${props.percent}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function StatusTile({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <div className="rounded-md border border-line bg-panel-strong p-3">
+      <p className="text-xs text-muted">{label}</p>
+      <p className={ok ? "mt-2 text-sm font-semibold text-ok" : "mt-2 text-sm font-semibold text-warning"}>{ok ? "Configured" : "Missing"}</p>
+    </div>
   );
 }
 

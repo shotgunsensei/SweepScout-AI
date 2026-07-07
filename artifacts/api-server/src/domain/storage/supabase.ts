@@ -1,18 +1,24 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { defaultProfile, defaultSettings } from "@/lib/data/seed";
+import { defaultMembership, defaultOrganization, defaultProfile, defaultSettings, defaultSubscription } from "@/lib/data/seed";
 import type { Database, Json } from "@/lib/database.types";
+import { normalizePrizeCategory } from "@/lib/services/category-classifier";
+import { normalizeNearbyMetros } from "@/lib/services/location-eligibility";
+import { DEFAULT_ORGANIZATION_ID, buildDefaultSubscription, getPlanLimits, normalizePlanTier } from "@/lib/services/tenancy";
 import { buildDashboardData } from "@/lib/storage/dashboard";
 import type { SweepScoutStore } from "@/lib/storage/store";
 import type {
   AppSettings,
   AssistantTask,
   AuditLog,
+  BillingSubscription,
   BlockedDomain,
   DiscoveryJob,
   EntryLog,
   EntryStatus,
   ExtractionJob,
   InboxAlert,
+  Organization,
+  OrganizationMembership,
   RulesChangeAlert,
   RulesSnapshot,
   Sweepstake,
@@ -56,6 +62,8 @@ class SupabaseStore implements SweepScoutStore {
   constructor(private readonly supabase: Supabase) {}
 
   async getDashboardData() {
+    const organization = await this.getActiveOrganization();
+    const subscription = await this.getBillingSubscription(organization.id);
     return buildDashboardData({
       sweepstakes: await this.listSweepstakes(),
       discoveryJobs: await this.listDiscoveryJobs(),
@@ -64,7 +72,67 @@ class SupabaseStore implements SweepScoutStore {
       inboxAlerts: await this.listInboxAlerts(),
       rulesChangeAlerts: await this.listRulesChangeAlerts(),
       settings: await this.getSettings(),
+      organization,
+      subscription,
+      usage: await this.getUsageSnapshot(organization.id, subscription.tier),
     });
+  }
+
+  private async getUsageSnapshot(organizationId: string, tierInput: unknown) {
+    const tier = normalizePlanTier(tierInput);
+    const limits = getPlanLimits(tier);
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const [sweepstakes, discoveryJobs] = await Promise.all([this.listSweepstakes(), this.listDiscoveryJobs()]);
+    return {
+      organizationId,
+      tier,
+      limits,
+      savedSweepstakes: sweepstakes.length,
+      discoveryJobsThisMonth: discoveryJobs.filter((job) => {
+        const time = new Date(job.lastRunAt ?? job.createdAt).getTime();
+        return Number.isFinite(time) && time >= periodStart.getTime() && time < periodEnd.getTime();
+      }).length,
+      usagePeriodStart: periodStart.toISOString(),
+      usagePeriodEnd: periodEnd.toISOString(),
+    };
+  }
+
+  async listOrganizations(): Promise<Organization[]> {
+    return [defaultOrganization];
+  }
+
+  async getActiveOrganization(): Promise<Organization> {
+    return defaultOrganization;
+  }
+
+  async saveOrganization(organization: Organization): Promise<Organization> {
+    return organization;
+  }
+
+  async listMemberships(): Promise<OrganizationMembership[]> {
+    return [defaultMembership];
+  }
+
+  async getActiveMembership(): Promise<OrganizationMembership> {
+    return defaultMembership;
+  }
+
+  async saveMembership(membership: OrganizationMembership): Promise<OrganizationMembership> {
+    return membership;
+  }
+
+  async getBillingSubscription(organizationId = defaultOrganization.id): Promise<BillingSubscription> {
+    return {
+      ...buildDefaultSubscription(organizationId, defaultOrganization.planTier),
+      ...defaultSubscription,
+      organizationId,
+    };
+  }
+
+  async saveBillingSubscription(subscription: BillingSubscription): Promise<BillingSubscription> {
+    return subscription;
   }
 
   async listSweepstakes() {
@@ -73,16 +141,18 @@ class SupabaseStore implements SweepScoutStore {
       .select("*")
       .order("deadline", { ascending: true, nullsFirst: false });
     if (error) throw error;
-    return (data ?? []).map(mapSweepstakesRow);
+    return (data ?? []).map(mapSweepstakesRow).filter(belongsToDefaultOrganization);
   }
 
   async getSweepstake(id: string) {
     const { data, error } = await this.supabase.from("sweepstakes").select("*").eq("id", id).maybeSingle();
     if (error) throw error;
-    return data ? mapSweepstakesRow(data) : null;
+    const sweepstake = data ? mapSweepstakesRow(data) : null;
+    return sweepstake && belongsToDefaultOrganization(sweepstake) ? sweepstake : null;
   }
 
   async saveSweepstake(sweepstake: Sweepstake) {
+    const category = normalizePrizeCategory(sweepstake.category);
     const { data, error } = await this.supabase
       .from("sweepstakes")
       .upsert({
@@ -106,7 +176,8 @@ class SupabaseStore implements SweepScoutStore {
         scam_score: sweepstake.scamScore,
         compliance_notes: sweepstake.complianceNotes,
         extracted_json: {
-          category: sweepstake.category,
+          organizationId: sweepstake.organizationId ?? DEFAULT_ORGANIZATION_ID,
+          category,
           country: sweepstake.country,
           extractedRules: sweepstake.extractedRules ?? null,
           hasCaptcha: sweepstake.hasCaptcha,
@@ -117,6 +188,10 @@ class SupabaseStore implements SweepScoutStore {
           source: sweepstake.source,
           riskFlags: sweepstake.riskFlags,
           emailAlias: sweepstake.emailAlias,
+          localRegion: sweepstake.localRegion,
+          locationEligibilityScore: sweepstake.locationEligibilityScore,
+          locationEligibilityNotes: sweepstake.locationEligibilityNotes,
+          requiresInPersonAppearance: sweepstake.requiresInPersonAppearance,
         } satisfies Json,
         created_at: sweepstake.createdAt,
         updated_at: sweepstake.updatedAt,
@@ -133,7 +208,7 @@ class SupabaseStore implements SweepScoutStore {
       .select("*")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []).map(mapDiscoveryJobRow);
+    return (data ?? []).map(mapDiscoveryJobRow).filter(belongsToDefaultOrganization);
   }
 
   async getDiscoveryJob(id: string) {
@@ -142,7 +217,8 @@ class SupabaseStore implements SweepScoutStore {
     }
     const { data, error } = await this.supabase.from("discovery_jobs").select("*").eq("id", id).maybeSingle();
     if (error) throw error;
-    return data ? mapDiscoveryJobRow(data) : null;
+    const job = data ? mapDiscoveryJobRow(data) : null;
+    return job && belongsToDefaultOrganization(job) ? job : null;
   }
 
   async saveDiscoveryJob(job: DiscoveryJob) {
@@ -251,7 +327,7 @@ class SupabaseStore implements SweepScoutStore {
       .select("*")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []).map(mapExtractionJobRow);
+    return (data ?? []).map(mapExtractionJobRow).filter(belongsToDefaultOrganization);
   }
 
   async saveExtractionJob(job: ExtractionJob) {
@@ -313,7 +389,10 @@ class SupabaseStore implements SweepScoutStore {
       .select("*")
       .single();
     if (error) throw error;
-    return mapUserProfileRow(data);
+    return {
+      ...mapUserProfileRow(data),
+      preferences: profile.preferences,
+    };
   }
 
   async getSettings(): Promise<AppSettings> {
@@ -332,6 +411,7 @@ class SupabaseStore implements SweepScoutStore {
     if (error) throw error;
     return (data ?? []).map((row) => ({
       id: row.id,
+      organizationId: DEFAULT_ORGANIZATION_ID,
       domain: row.domain,
       reason: row.reason,
       createdAt: row.created_at,
@@ -355,6 +435,7 @@ class SupabaseStore implements SweepScoutStore {
     if (error) throw error;
     return {
       id: data.id,
+      organizationId: domain.organizationId ?? DEFAULT_ORGANIZATION_ID,
       domain: data.domain,
       reason: data.reason,
       createdAt: data.created_at,
@@ -397,12 +478,13 @@ function mapSweepstakesRow(row: SweepstakesRow): Sweepstake {
   const extractedRules = rulesExtractionFrom(extracted.extractedRules);
   return {
     id: row.id,
+    organizationId: stringFrom(extracted.organizationId, DEFAULT_ORGANIZATION_ID),
     title: row.title,
     sponsor: row.sponsor ?? "Unknown sponsor",
     url: row.canonical_url ?? row.source_url,
     source: stringFrom(extracted.source, "supabase"),
     status: fromDatabaseSweepstakesStatus(row.status),
-    category: stringFrom(extracted.category, "unclassified"),
+    category: normalizePrizeCategory(stringFrom(extracted.category, "high-risk/unclear")),
     prizeRetailValue: row.estimated_value,
     country: extractedRules?.allowedCountries[0] ?? stringFrom(extracted.country, "US"),
     stateEligibility: row.eligible_states,
@@ -420,6 +502,10 @@ function mapSweepstakesRow(row: SweepstakesRow): Sweepstake {
     rulesExtractedAt: nullableStringFrom(extracted.rulesExtractedAt),
     formUrl: row.form_url,
     emailAlias: nullableStringFrom(extracted.emailAlias),
+    localRegion: nullableStringFrom(extracted.localRegion),
+    locationEligibilityScore: numberFrom(extracted.locationEligibilityScore) ?? 50,
+    locationEligibilityNotes: stringArrayFrom(extracted.locationEligibilityNotes),
+    requiresInPersonAppearance: booleanFrom(extracted.requiresInPersonAppearance),
     extractedRules,
     scamScore: row.scam_score,
     eligibilityScore: numberFrom(extracted.eligibilityScore) ?? (row.status === "eligible" ? 90 : row.status === "ineligible" ? 20 : 50),
@@ -433,6 +519,7 @@ function mapSweepstakesRow(row: SweepstakesRow): Sweepstake {
 function mapDiscoveryJobRow(row: DiscoveryJobRow): DiscoveryJob {
   return {
     id: row.id,
+    organizationId: DEFAULT_ORGANIZATION_ID,
     label: row.query,
     query: row.query,
     seeds: [],
@@ -447,6 +534,7 @@ function mapDiscoveryJobRow(row: DiscoveryJobRow): DiscoveryJob {
 function mapExtractionJobRow(row: ExtractionJobRow): ExtractionJob {
   return {
     id: row.id,
+    organizationId: DEFAULT_ORGANIZATION_ID,
     sweepstakeId: row.sweepstakes_id,
     status: row.status as ExtractionJob["status"],
     summary: row.summary,
@@ -460,6 +548,7 @@ function mapExtractionJobRow(row: ExtractionJobRow): ExtractionJob {
 function mapEntryAttemptRow(row: EntryAttemptRow): EntryLog {
   return {
     id: row.id,
+    organizationId: DEFAULT_ORGANIZATION_ID,
     sweepstakeId: row.sweepstakes_id,
     sweepstakeTitle: row.sweepstakes?.title ?? "Sweepstake",
     status: fromDatabaseEntryAttemptStatus(row.status),
@@ -495,7 +584,10 @@ function mapUserProfileRow(row: UserProfileRow): UserProfile {
     city: row.city ?? "",
     postalCode: row.postal_code ?? "",
     consentToPrefill: row.consent_to_prefill ?? false,
-    preferences: defaultProfile.preferences,
+    preferences: {
+      ...defaultProfile.preferences,
+      nearbyMetros: normalizeNearbyMetros(defaultProfile.preferences.nearbyMetros),
+    },
     updatedAt: row.updated_at,
   };
 }
@@ -503,6 +595,7 @@ function mapUserProfileRow(row: UserProfileRow): UserProfile {
 function mapAuditLogRow(row: AuditLogRow): AuditLog {
   return {
     id: row.id,
+    organizationId: DEFAULT_ORGANIZATION_ID,
     actorId: row.actor_id,
     action: row.action,
     entityType: row.entity_type,
@@ -562,6 +655,10 @@ function fromDatabaseEntryAttemptStatus(status: EntryAttemptStatus): EntryStatus
 
 function getConfiguredUserId() {
   return process.env.SWEEPSCOUT_USER_ID && isUuid(process.env.SWEEPSCOUT_USER_ID) ? process.env.SWEEPSCOUT_USER_ID : null;
+}
+
+function belongsToDefaultOrganization(record: { organizationId?: string | null }) {
+  return (record.organizationId ?? DEFAULT_ORGANIZATION_ID) === DEFAULT_ORGANIZATION_ID;
 }
 
 function isUuid(value: string | undefined): value is string {

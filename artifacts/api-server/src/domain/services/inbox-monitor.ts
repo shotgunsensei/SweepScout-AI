@@ -5,6 +5,7 @@ import { getAppConfig, AppConfigError } from "@/lib/env";
 import { getRegistrableDomain } from "@/lib/discovery/url";
 import { getStore } from "@/lib/storage/store";
 import { writeAuditLog } from "@/lib/audit";
+import { DEFAULT_ORGANIZATION_ID } from "@/lib/services/tenancy";
 import type {
   AppSettings,
   InboxAlert,
@@ -449,6 +450,7 @@ function classifyEmail(
   const now = new Date().toISOString();
   return {
     id: `inbox-${hashText(message.messageId).slice(0, 18)}`,
+    organizationId: match?.sweepstake.organizationId ?? DEFAULT_ORGANIZATION_ID,
     messageId: message.messageId,
     provider,
     mailbox,

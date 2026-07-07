@@ -109,6 +109,36 @@ const mockResults: SearchResult[] = [
     source: "mock",
   },
   {
+    title: "New York Morning FM Summer Cash Contest",
+    url: "https://promos.localradio.example.com/new-york-summer-cash/rules",
+    snippet: "Radio station contest. Open to New York, New Jersey, and Connecticut residents. No purchase necessary.",
+    source: "mock",
+  },
+  {
+    title: "Long Island Auto Group Weekend Giveaway",
+    url: "https://dealer.example.com/long-island-weekend-giveaway",
+    snippet: "Local dealership giveaway official rules. Open to NY residents 18+. Online entry available.",
+    source: "mock",
+  },
+  {
+    title: "Hudson Valley Grocery Rewards Sweepstakes",
+    url: "https://grocery.example.org/hudson-valley-rewards-sweepstakes",
+    snippet: "Grocery store sweepstakes with one online entry per day and no purchase necessary.",
+    source: "mock",
+  },
+  {
+    title: "Queens Chamber Local Business Prize Drawing",
+    url: "https://chamber.example.net/queens-local-business-prize",
+    snippet: "Chamber of commerce promotion for local business gift cards. See official rules for eligibility.",
+    source: "mock",
+  },
+  {
+    title: "County Fair Truck Giveaway",
+    url: "https://fair.example.org/county-fair-truck-giveaway",
+    snippet: "County fair giveaway. Winner must be present to win and claim prize at the fairgrounds.",
+    source: "mock",
+  },
+  {
     title: "Suspicious Prize Hub",
     url: "https://blocked.example.com/too-good-to-be-true",
     snippet: "Partner offer wall with unclear rules.",

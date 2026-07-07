@@ -7,6 +7,7 @@ import { Badge, Checkbox, MetricCard, PageHeader, Panel, SubmitButton } from "@/
 import { apiGet } from "@/lib/api";
 import { formToObject, useApiMutation } from "@/lib/forms";
 import { formatDate, titleCase } from "@/lib/format";
+import { categoryLabel, categoryTone } from "@/lib/prize-categories";
 import type { EntryLog, EntryQueueItem, EntryTrackingData, ReminderDay, Sweepstake } from "@/lib/types";
 
 export default function EntriesPage() {
@@ -69,6 +70,8 @@ function QueueItem({ item }: { item: EntryQueueItem }) {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-medium">{item.sweepstake.title}</h3>
             <Badge tone="ok">{item.frequencyLabel}</Badge>
+            <Badge tone={categoryTone(item.sweepstake.category)}>{categoryLabel(item.sweepstake.category)}</Badge>
+            <Badge tone={item.categoryPreferred ? "ok" : "default"}>Category rank {item.categoryPriority}</Badge>
             <Badge>{item.sweepstake.hasCaptcha ? "Manual CAPTCHA" : "No CAPTCHA flag"}</Badge>
           </div>
           <p className="mt-2 text-sm text-muted">
@@ -222,7 +225,10 @@ function ExpiringSoonPanel({ items }: { items: EntryQueueItem[] }) {
             <div key={item.sweepstake.id} className="rounded-md border border-line bg-panel-strong p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium">{item.sweepstake.title}</p>
-                <Badge tone={item.canEnter ? "warn" : "default"}>{item.frequencyLabel}</Badge>
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone={categoryTone(item.sweepstake.category)}>{categoryLabel(item.sweepstake.category)}</Badge>
+                  <Badge tone={item.canEnter ? "warn" : "default"}>{item.frequencyLabel}</Badge>
+                </div>
               </div>
               <p className="mt-2 text-sm text-muted">Ends {formatDate(item.sweepstake.endAt)}</p>
               <p className="mt-1 text-sm text-muted">{item.blockedReason ?? "Ready for manual entry."}</p>

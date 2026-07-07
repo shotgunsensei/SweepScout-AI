@@ -4,6 +4,8 @@ import { getRegistrableDomain, isBlockedDomain } from "@/lib/discovery/url";
 import { AppConfigError, getAppConfig, requireOpenAIAccess, type OpenAIAccess } from "@/lib/env";
 import { scoreSweepstake } from "@/lib/scoring";
 import { detectProtectionSignals } from "@/lib/safety";
+import { classifySweepstakeCategory } from "@/lib/services/category-classifier";
+import { findSponsorReputationForSweepstake, getSponsorReputationReport } from "@/lib/services/sponsor-reputation";
 import { getStore } from "@/lib/storage/store";
 import type { RiskFlag, RulesExtractionData, Sweepstake, SweepstakesRules } from "@/lib/types";
 
@@ -77,6 +79,7 @@ export async function runRulesExtraction(sweepstakeId: string) {
   const startedAt = new Date().toISOString();
   const extractionJob = await store.saveExtractionJob({
     id: `ext-${sweepstake.id}-${Date.now()}`,
+    organizationId: sweepstake.organizationId,
     sweepstakeId: sweepstake.id,
     status: "running",
     summary: null,
@@ -108,7 +111,7 @@ export async function runRulesExtraction(sweepstakeId: string) {
     const mergedExtraction = mergeObservedSignals(extracted, source);
     const riskAssessment = assessSuspiciousSignals(sweepstake, mergedExtraction, source);
     const profile = await store.getUserProfile();
-    const allSweepstakes = await store.listSweepstakes();
+    const [allSweepstakes, reputationReport] = await Promise.all([store.listSweepstakes(), getSponsorReputationReport()]);
     const scoreSubject: Sweepstake = {
       ...sweepstake,
       prizeRetailValue: mergedExtraction.approximateRetailValue ?? sweepstake.prizeRetailValue,
@@ -123,7 +126,13 @@ export async function runRulesExtraction(sweepstakeId: string) {
       formUrl: mergedExtraction.formUrl ?? sweepstake.formUrl,
       extractedRules: mergedExtraction,
     };
-    const scored = scoreSweepstake(scoreSubject, profile, toLegacyRules(mergedExtraction), allSweepstakes);
+    const scored = scoreSweepstake(
+      scoreSubject,
+      profile,
+      toLegacyRules(mergedExtraction),
+      allSweepstakes,
+      findSponsorReputationForSweepstake(scoreSubject, reputationReport),
+    );
     const now = new Date().toISOString();
     const riskFlags = dedupeRiskFlags([...scored.riskFlags, ...riskAssessment.flags]);
     const scamScore = riskAssessment.suspicious ? Math.max(scored.scamScore, 72) : scored.scamScore;
@@ -132,11 +141,26 @@ export async function runRulesExtraction(sweepstakeId: string) {
       ...scored.complianceNotes,
       ...riskAssessment.reasons.map((reason) => `Needs review: ${reason}.`),
     ]);
+    const category = classifySweepstakeCategory({
+      ...sweepstake,
+      title: mergedExtraction.title ?? sweepstake.title,
+      sponsor: mergedExtraction.sponsor ?? sweepstake.sponsor,
+      prizeSummary: mergedExtraction.prizeSummary,
+      prizeRetailValue: mergedExtraction.approximateRetailValue ?? sweepstake.prizeRetailValue,
+      eligibilitySummary: mergedExtraction.eligibility ?? sweepstake.eligibilitySummary,
+      rulesText: source.combinedText,
+      extractedRules: mergedExtraction,
+      riskFlags,
+      scamScore,
+      purchaseRequired: mergedExtraction.purchaseOrPaymentRequested,
+      noPurchaseMethodFound: !mergedExtraction.noPurchaseMethod,
+    });
 
     const updated: Sweepstake = {
       ...sweepstake,
       title: mergedExtraction.title ?? sweepstake.title,
       sponsor: mergedExtraction.sponsor ?? sweepstake.sponsor,
+      category,
       prizeRetailValue: mergedExtraction.approximateRetailValue ?? sweepstake.prizeRetailValue,
       country: mergedExtraction.allowedCountries[0] ?? sweepstake.country,
       stateEligibility: mergedExtraction.allowedStates.length ? mergedExtraction.allowedStates : sweepstake.stateEligibility,
@@ -391,10 +415,19 @@ async function extractRulesWithOpenAI(input: {
     return rulesExtractionSchema.parse(JSON.parse(text));
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new Error(`OpenAI extraction failed schema validation: ${z.prettifyError(error)}`);
+      throw new Error(`OpenAI extraction failed schema validation: ${formatZodIssues(error)}`);
     }
     throw error;
   }
+}
+
+function formatZodIssues(error: z.ZodError) {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.length ? issue.path.join(".") : "root";
+      return `${path}: ${issue.message}`;
+    })
+    .join("; ");
 }
 
 function mergeObservedSignals(extracted: RulesExtractionData, source: ExtractionSource): RulesExtractionData {

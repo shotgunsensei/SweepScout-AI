@@ -1,6 +1,7 @@
 import { CalendarDays, ExternalLink, Repeat2, ShieldAlert, ShieldCheck, TicketCheck } from "lucide-react";
 import { Badge, Panel, RiskList, ScorePill } from "@/components/ui";
 import { formatCurrency, formatDate, titleCase } from "@/lib/format";
+import { categoryLabel } from "@/lib/prize-categories";
 import type { Sweepstake } from "@/lib/types";
 
 export function SweepstakeCard(props: { item: Sweepstake; children?: React.ReactNode; compact?: boolean }) {
@@ -18,7 +19,7 @@ export function SweepstakeCard(props: { item: Sweepstake; children?: React.React
             <EntryFrequencyBadge value={item.entryFrequency} />
           </div>
           <p className="mt-2 text-sm text-muted">
-            {item.sponsor} | {formatCurrency(item.prizeRetailValue)} | {item.category}
+            {item.sponsor} | {formatCurrency(item.prizeRetailValue)} | {categoryLabel(item.category)}
           </p>
           {!props.compact ? (
             <p className="mt-3 max-w-4xl text-sm leading-6 text-foreground/90">{item.eligibilitySummary}</p>

@@ -1,7 +1,9 @@
 import { clsx } from "clsx";
 import {
   ClipboardCheck,
+  CalendarCheck2,
   Database,
+  FileText,
   Gauge,
   Home,
   ListChecks,
@@ -9,18 +11,24 @@ import {
   Radar,
   Settings,
   ShieldAlert,
+  Smartphone,
   TrendingUp,
+  Upload,
   type LucideIcon,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 const icons = {
+  calendar: CalendarCheck2,
   clipboard: ClipboardCheck,
   database: Database,
+  reports: FileText,
   gauge: Gauge,
   home: Home,
+  import: Upload,
   list: ListChecks,
   mail: MailWarning,
+  mobile: Smartphone,
   radar: Radar,
   roi: TrendingUp,
   settings: Settings,

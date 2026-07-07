@@ -2,8 +2,21 @@ import { randomUUID } from "node:crypto";
 import { writeAuditLog } from "@/lib/audit";
 import { getSearchProvider, type SearchProvider, type SearchResult } from "@/lib/discovery/providers";
 import { getRegistrableDomain, isBlockedDomain, normalizeDiscoveryUrl } from "@/lib/discovery/url";
+import { classifySweepstakeCategory } from "@/lib/services/category-classifier";
+import {
+  assessLocationEligibility,
+  buildLocalDiscoveryQueries,
+  type LocationEligibilityAssessment,
+} from "@/lib/services/location-eligibility";
+import {
+  applyReputationToSweepstake,
+  findSponsorReputationForCandidate,
+  getSponsorReputationReport,
+  shouldBlockForReputation,
+} from "@/lib/services/sponsor-reputation";
+import { DEFAULT_ORGANIZATION_ID, assertCanCreateDiscoveryJob, assertCanSaveNewSweepstake } from "@/lib/services/tenancy";
 import { getStore } from "@/lib/storage/store";
-import type { DiscoveryJob, Sweepstake } from "@/lib/types";
+import type { DiscoveryJob, SponsorReputationReport, Sweepstake, UserProfile } from "@/lib/types";
 
 export const DEFAULT_DISCOVERY_QUERIES = [
   "no purchase necessary sweepstakes enter online",
@@ -18,6 +31,7 @@ export type DiscoveryRunInput = {
   maxResults?: number;
   domainBlacklist?: string[];
   provider?: string;
+  local?: boolean;
 };
 
 type DiscoveryCandidate = {
@@ -41,11 +55,13 @@ const MAX_RESULTS_LIMIT = 50;
 const POLITE_DELAY_MS = 1250;
 
 export async function createAndRunDiscovery(input: DiscoveryRunInput = {}) {
+  await assertCanCreateDiscoveryJob();
   const store = await getStore();
   const queries = normalizeQueries(input.queries);
   const now = new Date().toISOString();
   const job: DiscoveryJob = {
     id: randomUUID(),
+    organizationId: DEFAULT_ORGANIZATION_ID,
     label: "Sweepstakes search discovery",
     query: queries.join(" | "),
     seeds: queries,
@@ -54,10 +70,35 @@ export async function createAndRunDiscovery(input: DiscoveryRunInput = {}) {
     lastRunAt: null,
     createdAt: now,
     notes: "Queued discovery run.",
+    scope: "general",
   };
 
   await store.saveDiscoveryJob(job);
   return runDiscoveryJob(job.id, input);
+}
+
+export async function createAndRunLocalDiscovery(input: DiscoveryRunInput = {}) {
+  await assertCanCreateDiscoveryJob();
+  const store = await getStore();
+  const profile = await store.getUserProfile();
+  const queries = normalizeQueries(input.queries?.length ? input.queries : buildLocalDiscoveryQueries(profile));
+  const now = new Date().toISOString();
+  const job: DiscoveryJob = {
+    id: randomUUID(),
+    organizationId: DEFAULT_ORGANIZATION_ID,
+    label: "Local/regional sweepstakes discovery",
+    query: queries.join(" | "),
+    seeds: queries,
+    status: "queued",
+    discoveredCount: 0,
+    lastRunAt: null,
+    createdAt: now,
+    notes: "Queued local discovery run.",
+    scope: "local",
+  };
+
+  await store.saveDiscoveryJob(job);
+  return runDiscoveryJob(job.id, { ...input, local: true });
 }
 
 export async function runDiscoveryJob(jobId: string, input: DiscoveryRunInput = {}) {
@@ -80,17 +121,50 @@ export async function runDiscoveryJob(jobId: string, input: DiscoveryRunInput = 
 
   try {
     const provider = getSearchProvider(input.provider);
+    const localDiscovery = input.local ?? running.scope === "local";
+    const profile = localDiscovery ? await store.getUserProfile() : null;
+    const reputationReport = await getSponsorReputationReport();
     const candidates = await discoverCandidates({
       job: running,
       provider,
       maxResults: clampMaxResults(input.maxResults),
       requestedBlacklist: input.domainBlacklist ?? [],
+      reputationReport,
       logs,
     });
 
     const saved = [];
     for (const candidate of candidates) {
-      saved.push(await saveCandidate(candidate));
+      const location = profile
+        ? assessLocationEligibility(
+            {
+              title: candidate.title,
+              url: candidate.normalizedUrl,
+              query: candidate.query,
+              snippet: candidate.snippet,
+            },
+            profile,
+          )
+        : null;
+      if (location?.requiresInPersonAppearance && !profile?.preferences.allowInPersonContests) {
+        logDiscovery(logs, "warn", "Skipped in-person local contest by profile preference.", {
+          title: candidate.title,
+          url: candidate.normalizedUrl,
+          score: location.score,
+        });
+        continue;
+      }
+      try {
+        await assertCanSaveNewSweepstake();
+        saved.push(await saveCandidate(candidate, { location, profile, localDiscovery, reputationReport }));
+      } catch (error) {
+        logDiscovery(logs, "warn", "Skipped because plan saved sweepstakes limit is reached.", {
+          title: candidate.title,
+          url: candidate.normalizedUrl,
+          error: error instanceof Error ? error.message : "Plan limit reached.",
+        });
+        break;
+      }
     }
 
     const completed: DiscoveryJob = {
@@ -113,6 +187,7 @@ export async function runDiscoveryJob(jobId: string, input: DiscoveryRunInput = 
         saved: saved.length,
         skipped: logs.filter((log) => log.message.startsWith("Skipped")).length,
         provider: provider.name,
+        localDiscovery,
       },
     });
 
@@ -146,6 +221,7 @@ async function discoverCandidates(input: {
   provider: SearchProvider;
   maxResults: number;
   requestedBlacklist: string[];
+  reputationReport: SponsorReputationReport;
   logs: DiscoveryLog[];
 }) {
   const store = await getStore();
@@ -188,6 +264,19 @@ async function discoverCandidates(input: {
         });
         continue;
       }
+      const reputation = findSponsorReputationForCandidate(
+        { url: candidate.normalizedUrl, sponsor: getRegistrableDomain(candidate.normalizedUrl) },
+        input.reputationReport,
+      );
+      if (shouldBlockForReputation(reputation)) {
+        logDiscovery(input.logs, "warn", "Skipped blocked reputation domain.", {
+          domain: new URL(candidate.normalizedUrl).hostname,
+          url: candidate.normalizedUrl,
+          riskScore: reputation?.riskScore,
+          reasons: reputation?.reasons.slice(0, 3),
+        });
+        continue;
+      }
       if (existingUrls.has(candidate.normalizedUrl) || candidates.has(candidate.normalizedUrl)) {
         logDiscovery(input.logs, "info", "Skipped duplicate URL.", { url: candidate.normalizedUrl });
         continue;
@@ -221,18 +310,48 @@ function normalizeResult(result: SearchResult, query: string, provider: string, 
   }
 }
 
-async function saveCandidate(candidate: DiscoveryCandidate) {
+async function saveCandidate(
+  candidate: DiscoveryCandidate,
+  context: {
+    location?: LocationEligibilityAssessment | null;
+    profile?: UserProfile | null;
+    localDiscovery?: boolean;
+    reputationReport?: SponsorReputationReport;
+  } = {},
+) {
   const store = await getStore();
   const now = new Date().toISOString();
   const domain = getRegistrableDomain(candidate.normalizedUrl);
+  const localNotes = context.location?.notes ?? [];
+  const riskFlags: Sweepstake["riskFlags"] = [
+    {
+      code: "needs-rules-review",
+      label: "Official rules extraction required",
+      severity: "medium",
+    },
+  ];
+  if (context.location?.requiresInPersonAppearance) {
+    riskFlags.push({
+      code: "in-person-required",
+      label: "In-person appearance may be required",
+      severity: context.profile?.preferences.allowInPersonContests ? "medium" : "high",
+    });
+  }
   const sweepstake: Sweepstake = {
     id: randomUUID(),
+    organizationId: DEFAULT_ORGANIZATION_ID,
     title: candidate.title.slice(0, 180),
     sponsor: domain,
     url: candidate.normalizedUrl,
     source: candidate.provider,
     status: "discovered",
-    category: "unclassified",
+    category: classifySweepstakeCategory({
+      title: candidate.title,
+      sponsor: domain,
+      url: candidate.normalizedUrl,
+      text: candidate.snippet,
+      eligibilitySummary: candidate.snippet,
+    }),
     prizeRetailValue: null,
     country: "US",
     stateEligibility: ["ALL"],
@@ -250,23 +369,25 @@ async function saveCandidate(candidate: DiscoveryCandidate) {
     rulesExtractedAt: null,
     formUrl: null,
     emailAlias: null,
+    localRegion: context.location?.localRegion ?? null,
+    locationEligibilityScore: context.location?.score ?? 50,
+    locationEligibilityNotes: localNotes,
+    requiresInPersonAppearance: context.location?.requiresInPersonAppearance ?? false,
     scamScore: 35,
-    eligibilityScore: 50,
-    riskFlags: [
-      {
-        code: "needs-rules-review",
-        label: "Official rules extraction required",
-        severity: "medium",
-      },
-    ],
+    eligibilityScore: context.localDiscovery ? Math.max(25, context.location?.score ?? 50) : 50,
+    riskFlags,
     complianceNotes: [
       "Needs review: official rules have not been extracted yet.",
+      ...localNotes,
       "Reminder cadence: unknown frequency; require manual rules review before scheduling reminders.",
     ],
     createdAt: now,
     updatedAt: now,
   };
-  return store.saveSweepstake(sweepstake);
+  const reputation = context.reputationReport
+    ? findSponsorReputationForCandidate({ url: sweepstake.url, sponsor: sweepstake.sponsor }, context.reputationReport)
+    : null;
+  return store.saveSweepstake(applyReputationToSweepstake(sweepstake, reputation));
 }
 
 function normalizeQueries(queries: string[] | undefined) {
@@ -307,6 +428,7 @@ function summarizeLogs(logs: DiscoveryLog[], saved: number) {
     guardrails: [
       "Search-result discovery only; no forms submitted.",
       "No CAPTCHA, bot-protection, robots, or rate-limit bypass attempted.",
+      "Local discovery skips in-person-only contests unless the vault preference allows them.",
       `Polite delay: ${POLITE_DELAY_MS}ms between query requests.`,
     ],
   });

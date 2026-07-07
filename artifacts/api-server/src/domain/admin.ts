@@ -56,6 +56,7 @@ export async function requireAdmin() {
 export function entriesToCsv(entries: EntryLog[]) {
   const headers = [
     "id",
+    "organization_id",
     "sweepstake_id",
     "sweepstake_title",
     "status",
@@ -74,6 +75,7 @@ export function entriesToCsv(entries: EntryLog[]) {
 
   const rows = entries.map((entry) => [
     entry.id,
+    entry.organizationId,
     entry.sweepstakeId,
     entry.sweepstakeTitle,
     entry.status,

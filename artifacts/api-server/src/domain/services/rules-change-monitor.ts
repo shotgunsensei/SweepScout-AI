@@ -276,6 +276,7 @@ function buildRulesSnapshot(sweepstake: Sweepstake, rulesUrl: string, visibleTex
   const capturedAt = new Date().toISOString();
   return {
     id: `rules-snap-${sweepstake.id}-${Date.now()}-${randomUUID().slice(0, 8)}`,
+    organizationId: sweepstake.organizationId,
     sweepstakeId: sweepstake.id,
     sweepstakeTitle: sweepstake.title,
     rulesUrl,
@@ -299,6 +300,7 @@ function buildRulesChangeAlert(
   const fieldLabels = changedFields.map(labelRulesChangeField).join(", ");
   return {
     id: `rules-alert-${sweepstake.id}-${Date.now()}-${randomUUID().slice(0, 8)}`,
+    organizationId: sweepstake.organizationId,
     sweepstakeId: sweepstake.id,
     sweepstakeTitle: sweepstake.title,
     sponsor: sweepstake.sponsor,

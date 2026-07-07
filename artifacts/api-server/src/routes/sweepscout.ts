@@ -10,11 +10,23 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { assertNoForbiddenVaultFields, assertNoForbiddenVaultValues } from "@/lib/profile-safety";
 import { approveAssistantTask, recordEntryAttempt } from "@/lib/services/assistant";
 import { analyzeExtensionPage, saveExtensionPage } from "@/lib/services/browser-extension";
-import { runDiscoveryJob, createAndRunDiscovery } from "@/lib/services/discovery";
+import { createStripeCheckoutSession, handleStripeWebhook } from "@/lib/services/billing";
+import { normalizeCategoryPreferences } from "@/lib/services/category-classifier";
+import {
+  complianceReportToCsv,
+  complianceSweepstakeReportToCsv,
+  complianceSweepstakeReportToPdf,
+  getComplianceReport,
+  getComplianceSweepstakeReport,
+} from "@/lib/services/compliance-report";
+import { getDailyWorkflowData } from "@/lib/services/daily-workflow";
+import { runDiscoveryJob, createAndRunDiscovery, createAndRunLocalDiscovery } from "@/lib/services/discovery";
 import { generateMissingSweepstakeAliases, getSpamSourceReport } from "@/lib/services/email-aliases";
 import { getEntryTrackingData, markEntryStatus } from "@/lib/services/entry-tracking";
 import { runAssistedFormPrefill } from "@/lib/services/form-prefill";
+import { runImport } from "@/lib/services/imports";
 import { getInboxStatus, pollInboxNow, reviewInboxAlert } from "@/lib/services/inbox-monitor";
+import { normalizeNearbyMetros } from "@/lib/services/location-eligibility";
 import { runRulesExtraction } from "@/lib/services/openai-extraction";
 import { getRoiReport } from "@/lib/services/roi-report";
 import {
@@ -23,6 +35,14 @@ import {
   reviewRulesChangeAlert,
   startRulesChangeMonitoring,
 } from "@/lib/services/rules-change-monitor";
+import { findSponsorReputationForSweepstake, getSponsorReputationReport } from "@/lib/services/sponsor-reputation";
+import {
+  DEFAULT_ORGANIZATION_ID,
+  assertCanCreateDiscoveryJob,
+  assertFeatureAllowed,
+  getActiveTenant,
+  getSaaSAdminSummary,
+} from "@/lib/services/tenancy";
 
 const router: IRouter = Router();
 
@@ -56,7 +76,14 @@ async function rescoreSweepstakeById(sweepstakeId: string) {
     throw new Error("Sweepstake not found.");
   }
   const profile = await store.getUserProfile();
-  const scored = scoreSweepstake(sweepstake, profile, undefined, await store.listSweepstakes());
+  const [allSweepstakes, reputationReport] = await Promise.all([store.listSweepstakes(), getSponsorReputationReport()]);
+  const scored = scoreSweepstake(
+    sweepstake,
+    profile,
+    undefined,
+    allSweepstakes,
+    findSponsorReputationForSweepstake(sweepstake, reputationReport),
+  );
   const updated = await store.saveSweepstake({ ...sweepstake, ...scored, updatedAt: new Date().toISOString() });
   await writeAuditLog({
     actorId: null,
@@ -79,6 +106,15 @@ function normalizeDomainInput(value: string) {
   return getRegistrableDomain(url);
 }
 
+function safeFilename(value: string) {
+  const name = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return name || "sweepstake";
+}
+
 // ---------------------------------------------------------------------------
 // Reads
 // ---------------------------------------------------------------------------
@@ -90,6 +126,10 @@ router.get("/config", handler(async (_req, res) => {
 router.get("/dashboard", handler(async (_req, res) => {
   const store = await getStore();
   ok(res, await store.getDashboardData());
+}));
+
+router.get("/tenant", handler(async (_req, res) => {
+  ok(res, await getActiveTenant());
 }));
 
 router.get("/sweepstakes", handler(async (_req, res) => {
@@ -130,6 +170,10 @@ router.get("/entries", handler(async (_req, res) => {
 
 router.get("/entries/tracking", handler(async (_req, res) => {
   ok(res, await getEntryTrackingData());
+}));
+
+router.get("/daily-workflow", handler(async (_req, res) => {
+  ok(res, await getDailyWorkflowData());
 }));
 
 router.get("/entries/:id/review", handler(async (req, res) => {
@@ -181,8 +225,43 @@ router.get("/spam-report", handler(async (_req, res) => {
   ok(res, await getSpamSourceReport());
 }));
 
+router.get("/reputation", handler(async (_req, res) => {
+  ok(res, await getSponsorReputationReport());
+}));
+
 router.get("/roi-report", handler(async (_req, res) => {
+  await assertFeatureAllowed("advancedReporting");
   ok(res, await getRoiReport());
+}));
+
+router.get("/reports/compliance", handler(async (_req, res) => {
+  await assertFeatureAllowed("advancedReporting");
+  ok(res, await getComplianceReport());
+}));
+
+router.get("/reports/compliance.csv", handler(async (_req, res) => {
+  await assertFeatureAllowed("advancedReporting");
+  const report = await getComplianceReport();
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", 'attachment; filename="sweepscout-compliance-reports.csv"');
+  res.status(200).send(complianceReportToCsv(report));
+}));
+
+router.get("/reports/compliance/:id.csv", handler(async (req, res) => {
+  await assertFeatureAllowed("advancedReporting");
+  const report = await getComplianceSweepstakeReport(String(req.params.id ?? ""));
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${safeFilename(report.title)}-compliance.csv"`);
+  res.status(200).send(complianceSweepstakeReportToCsv(report));
+}));
+
+router.get("/reports/compliance/:id.pdf", handler(async (req, res) => {
+  await assertFeatureAllowed("advancedReporting");
+  const report = await getComplianceSweepstakeReport(String(req.params.id ?? ""));
+  const pdf = complianceSweepstakeReportToPdf(report);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${safeFilename(report.title)}-compliance.pdf"`);
+  res.status(200).send(pdf);
 }));
 
 router.get("/rules-monitor/status", handler(async (_req, res) => {
@@ -195,7 +274,12 @@ router.get("/rules-monitor/alerts", handler(async (req, res) => {
 }));
 
 router.post("/extension/analyze", handler(async (req, res) => {
+  await assertFeatureAllowed("browserExtension");
   ok(res, await analyzeExtensionPage(req.body));
+}));
+
+router.get("/billing/summary", handler(async (_req, res) => {
+  ok(res, await getSaaSAdminSummary());
 }));
 
 router.get("/admin", handler(async (_req, res) => {
@@ -205,15 +289,17 @@ router.get("/admin", handler(async (_req, res) => {
     return;
   }
   const store = await getStore();
-  const [discoveryJobs, extractionJobs, sweepstakes, blockedDomains, entries, auditLogs] = await Promise.all([
+  const [discoveryJobs, extractionJobs, sweepstakes, blockedDomains, entries, auditLogs, saas, reputation] = await Promise.all([
     store.listDiscoveryJobs(),
     store.listExtractionJobs(),
     store.listSweepstakes(),
     store.listBlockedDomains(),
     store.listEntryLogs(),
     store.listAuditLogs(30),
+    getSaaSAdminSummary(),
+    getSponsorReputationReport(),
   ]);
-  ok(res, { admin, discoveryJobs, extractionJobs, sweepstakes, blockedDomains, entries, auditLogs, config: getAppConfig() });
+  ok(res, { admin, discoveryJobs, extractionJobs, sweepstakes, blockedDomains, entries, auditLogs, saas, reputation, config: getAppConfig() });
 }));
 
 router.get("/admin/export/entries", handler(async (_req, res) => {
@@ -241,17 +327,129 @@ router.post("/discovery/run", handler(async (req, res) => {
     return;
   }
   const jobId = String(req.body?.jobId ?? "");
+  if (jobId) {
+    await assertCanCreateDiscoveryJob();
+  }
   const job = jobId ? await runDiscoveryJob(jobId) : await createAndRunDiscovery();
   ok(res, job);
 }));
 
+router.post("/discovery/run-local", handler(async (req, res) => {
+  const rate = checkRateLimit(`discovery-local:${clientKey(req)}`, 4, 60_000);
+  if (!rate.allowed) {
+    fail(res, "Local discovery is rate limited. Try again shortly.", 429);
+    return;
+  }
+  const job = await createAndRunLocalDiscovery({
+    maxResults: Number(req.body?.maxResults || 15) || undefined,
+    provider: String(req.body?.provider ?? "") || undefined,
+  });
+  ok(res, job);
+}));
+
+router.post("/imports/csv", handler(async (req, res) => {
+  const rate = checkRateLimit(`imports-csv:${clientKey(req)}`, 8, 60_000);
+  if (!rate.allowed) {
+    fail(res, "CSV import is rate limited. Try again shortly.", 429);
+    return;
+  }
+  ok(
+    res,
+    await runImport({
+      source: "csv",
+      csvText: String(req.body?.csvText ?? ""),
+      extractRules: req.body?.extractRules === undefined ? true : bool(req.body.extractRules),
+    }),
+  );
+}));
+
+router.post("/imports/urls", handler(async (req, res) => {
+  const rate = checkRateLimit(`imports-urls:${clientKey(req)}`, 8, 60_000);
+  if (!rate.allowed) {
+    fail(res, "URL import is rate limited. Try again shortly.", 429);
+    return;
+  }
+  ok(
+    res,
+    await runImport({
+      source: "url_list",
+      urlsText: String(req.body?.urlsText ?? ""),
+      extractRules: req.body?.extractRules === undefined ? true : bool(req.body.extractRules),
+    }),
+  );
+}));
+
+router.post("/imports/bookmarks", handler(async (req, res) => {
+  const rate = checkRateLimit(`imports-bookmarks:${clientKey(req)}`, 8, 60_000);
+  if (!rate.allowed) {
+    fail(res, "Bookmark import is rate limited. Try again shortly.", 429);
+    return;
+  }
+  ok(
+    res,
+    await runImport({
+      source: "bookmarks",
+      bookmarkHtml: String(req.body?.bookmarkHtml ?? ""),
+      extractRules: req.body?.extractRules === undefined ? true : bool(req.body.extractRules),
+    }),
+  );
+}));
+
+router.post("/imports/manual", handler(async (req, res) => {
+  const rate = checkRateLimit(`imports-manual:${clientKey(req)}`, 20, 60_000);
+  if (!rate.allowed) {
+    fail(res, "Manual import is rate limited. Try again shortly.", 429);
+    return;
+  }
+  ok(
+    res,
+    await runImport({
+      source: "manual",
+      manual: {
+        url: String(req.body?.url ?? ""),
+        title: String(req.body?.title ?? ""),
+        sponsor: String(req.body?.sponsor ?? ""),
+        rulesUrl: String(req.body?.rulesUrl ?? ""),
+        formUrl: String(req.body?.formUrl ?? ""),
+        text: String(req.body?.notes ?? ""),
+      },
+      extractRules: req.body?.extractRules === undefined ? true : bool(req.body.extractRules),
+    }),
+  );
+}));
+
+router.post("/imports/text", handler(async (req, res) => {
+  const rate = checkRateLimit(`imports-text:${clientKey(req)}`, 12, 60_000);
+  if (!rate.allowed) {
+    fail(res, "Text import is rate limited. Try again shortly.", 429);
+    return;
+  }
+  ok(
+    res,
+    await runImport({
+      source: "text",
+      text: {
+        url: String(req.body?.url ?? ""),
+        title: String(req.body?.title ?? ""),
+        sponsor: String(req.body?.sponsor ?? ""),
+        rulesUrl: String(req.body?.rulesUrl ?? ""),
+        formUrl: String(req.body?.formUrl ?? ""),
+        text: String(req.body?.manualText ?? req.body?.text ?? ""),
+      },
+      extractRules: req.body?.extractRules === undefined ? false : bool(req.body.extractRules),
+    }),
+  );
+}));
+
 router.post("/extraction/run", handler(async (req, res) => {
+  await assertFeatureAllowed("scoring");
   const sweepstakeId = String(req.body?.sweepstakeId ?? "");
   const job = await runRulesExtraction(sweepstakeId);
   ok(res, job);
 }));
 
 router.post("/scoring/rescore", handler(async (req, res) => {
+  await assertFeatureAllowed("scoring");
   const updated = await rescoreSweepstakeById(String(req.body?.sweepstakeId ?? ""));
   ok(res, updated);
 }));
@@ -287,6 +485,7 @@ router.post("/entries/status", handler(async (req, res) => {
 }));
 
 router.post("/forms/prefill", handler(async (req, res) => {
+  await assertFeatureAllowed("prefill");
   const rate = checkRateLimit(`prefill:${clientKey(req)}`, 8, 60_000);
   if (!rate.allowed) {
     fail(res, "Prefill is rate limited. Try again shortly.", 429);
@@ -302,10 +501,52 @@ router.post("/forms/prefill", handler(async (req, res) => {
 }));
 
 router.post("/extension/save", handler(async (req, res) => {
+  await assertFeatureAllowed("browserExtension");
   ok(res, await saveExtensionPage(req.body));
 }));
 
+router.post("/sweepstakes/:id/block-domain", handler(async (req, res) => {
+  const store = await getStore();
+  const sweepstake = await store.getSweepstake(String(req.params.id ?? ""));
+  if (!sweepstake) {
+    fail(res, "Sweepstake not found.", 404);
+    return;
+  }
+  const domain = normalizeDomainInput(sweepstake.url);
+  const reason =
+    String(req.body?.reason ?? "").trim() ||
+    `Blocked from daily workflow after user review of ${sweepstake.title}.`;
+  const saved = await store.saveBlockedDomain({
+    id: randomUUID(),
+    organizationId: sweepstake.organizationId,
+    domain,
+    reason,
+    createdAt: new Date().toISOString(),
+  });
+  await store.saveSweepstake({
+    ...sweepstake,
+    status: "rejected",
+    riskFlags: [
+      ...sweepstake.riskFlags.filter((flag) => flag.code !== "user-blocked-domain"),
+      { code: "user-blocked-domain", label: "User blocked sponsor/domain", severity: "high" },
+    ],
+    complianceNotes: [...new Set([`User blocked ${domain}.`, ...sweepstake.complianceNotes])],
+    updatedAt: new Date().toISOString(),
+  });
+  await writeAuditLog({
+    actorId: null,
+    action: "sweepstake.domain_blocked",
+    entityType: "blocked_domain",
+    entityId: saved.domain,
+    severity: "block",
+    message: `Domain ${saved.domain} was blocked after user review.`,
+    metadata: { domain: saved.domain, sweepstakeId: sweepstake.id, sweepstakeTitle: sweepstake.title },
+  });
+  ok(res, saved);
+}));
+
 router.post("/inbox/poll", handler(async (_req, res) => {
+  await assertFeatureAllowed("inboxMonitoring");
   ok(res, await pollInboxNow());
 }));
 
@@ -323,7 +564,35 @@ router.post("/aliases/generate", handler(async (_req, res) => {
 }));
 
 router.post("/rules-monitor/check", handler(async (req, res) => {
+  await assertFeatureAllowed("advancedReporting");
   ok(res, await checkRulesNow({ sweepstakeId: String(req.body?.sweepstakeId ?? "") || undefined, force: true }));
+}));
+
+router.post("/billing/checkout", handler(async (req, res) => {
+  const origin = String(req.body?.origin ?? req.headers.origin ?? "http://localhost:5173");
+  ok(
+    res,
+    await createStripeCheckoutSession({
+      tier: String(req.body?.tier ?? "") as "free" | "pro" | "power",
+      origin,
+    }),
+  );
+}));
+
+router.post("/billing/webhook", handler(async (req, res) => {
+  const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
+  if (!rawBody) {
+    fail(res, "Raw webhook body was not captured.", 400);
+    return;
+  }
+  ok(
+    res,
+    await handleStripeWebhook({
+      rawBody,
+      signature: req.headers["stripe-signature"] as string | undefined,
+      event: req.body,
+    }),
+  );
 }));
 
 router.post("/rules-monitor/alerts/:id/review", handler(async (req, res) => {
@@ -365,13 +634,12 @@ router.put("/profile", handler(async (req, res) => {
     postalCode: String(body.postalCode ?? ""),
     consentToPrefill: wantsPrefill,
     preferences: {
-      categories: String(body.categories ?? "")
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
+      categories: normalizeCategoryPreferences(String(body.categories ?? current.preferences.categories.join(",")).split(",")),
+      nearbyMetros: normalizeNearbyMetros(body.nearbyMetros ?? current.preferences.nearbyMetros),
       maxDailyEntries: Number(body.maxDailyEntries ?? 12),
       avoidPurchaseRequired: bool(body.avoidPurchaseRequired),
       allowSocialActions: bool(body.allowSocialActions),
+      allowInPersonContests: bool(body.allowInPersonContests),
     },
     updatedAt: new Date().toISOString(),
   });
@@ -477,6 +745,7 @@ router.post("/admin/block-domain", handler(async (req, res) => {
   const domain = normalizeDomainInput(String(req.body?.domain ?? ""));
   const saved = await store.saveBlockedDomain({
     id: randomUUID(),
+    organizationId: DEFAULT_ORGANIZATION_ID,
     domain,
     reason: String(req.body?.reason ?? "Blocked from admin debug panel.").trim() || "Blocked from admin debug panel.",
     createdAt: new Date().toISOString(),

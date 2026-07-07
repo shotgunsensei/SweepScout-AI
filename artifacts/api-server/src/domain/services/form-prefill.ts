@@ -205,6 +205,7 @@ export async function runAssistedFormPrefill(rawInput: PrefillFormInput) {
     const screenshotPath = await capturePrefillScreenshot(page, entryId);
     const entry: EntryLog = {
       id: entryId,
+      organizationId: aliasAssignment.sweepstake.organizationId,
       sweepstakeId: aliasAssignment.sweepstake.id,
       sweepstakeTitle: aliasAssignment.sweepstake.title,
       status: "prefilled",

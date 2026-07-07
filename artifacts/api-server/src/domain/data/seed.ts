@@ -1,12 +1,21 @@
 import type {
   AppSettings,
   AssistantTask,
+  BillingSubscription,
   BlockedDomain,
   DiscoveryJob,
   EntryLog,
+  Organization,
+  OrganizationMembership,
   Sweepstake,
   UserProfile,
 } from "@/lib/types";
+import {
+  DEFAULT_ORGANIZATION_ID,
+  buildDefaultMembership,
+  buildDefaultOrganization,
+  buildDefaultSubscription,
+} from "@/lib/services/tenancy";
 
 function inDays(days: number) {
   const date = new Date();
@@ -72,21 +81,28 @@ export const defaultProfile: UserProfile = {
   phone: "",
   address1: "",
   address2: "",
-  city: "",
+  city: "New York",
   postalCode: "",
   consentToPrefill: false,
   preferences: {
-    categories: ["travel", "electronics", "home"],
+    categories: ["cash", "gift card", "electronics", "travel", "home goods"],
+    nearbyMetros: ["New York City", "Long Island", "Hudson Valley"],
     maxDailyEntries: 12,
     avoidPurchaseRequired: true,
     allowSocialActions: false,
+    allowInPersonContests: false,
   },
   updatedAt: new Date().toISOString(),
 };
 
+export const defaultOrganization: Organization = buildDefaultOrganization();
+export const defaultMembership: OrganizationMembership = buildDefaultMembership(defaultOrganization.id);
+export const defaultSubscription: BillingSubscription = buildDefaultSubscription(defaultOrganization.id, defaultOrganization.planTier);
+
 export const seedSweepstakes: Sweepstake[] = [
   {
     id: "swp-coastal-retreat",
+    organizationId: DEFAULT_ORGANIZATION_ID,
     title: "Coastal Retreat Weekend Giveaway",
     sponsor: "Blue Harbor Collective",
     url: "https://example.com/coastal-retreat",
@@ -110,6 +126,10 @@ export const seedSweepstakes: Sweepstake[] = [
     rulesExtractedAt: null,
     formUrl: "https://example.com/coastal-retreat/enter",
     emailAlias: null,
+    localRegion: "Northeast",
+    locationEligibilityScore: 82,
+    locationEligibilityNotes: ["Regional fit: result references NY."],
+    requiresInPersonAppearance: false,
     scamScore: 18,
     eligibilityScore: 91,
     riskFlags: [{ code: "captcha", label: "CAPTCHA likely", severity: "low" }],
@@ -123,12 +143,13 @@ export const seedSweepstakes: Sweepstake[] = [
   },
   {
     id: "swp-smart-kitchen",
+    organizationId: DEFAULT_ORGANIZATION_ID,
     title: "Smart Kitchen Upgrade Sweepstakes",
     sponsor: "Northstar Appliances",
     url: "https://example.com/smart-kitchen",
     source: "brand-watchlist",
     status: "watching",
-    category: "home",
+    category: "home goods",
     prizeRetailValue: 1800,
     country: "US",
     stateEligibility: ["ALL"],
@@ -146,6 +167,10 @@ export const seedSweepstakes: Sweepstake[] = [
     rulesExtractedAt: null,
     formUrl: "https://example.com/smart-kitchen/enter",
     emailAlias: null,
+    localRegion: null,
+    locationEligibilityScore: 50,
+    locationEligibilityNotes: [],
+    requiresInPersonAppearance: false,
     scamScore: 22,
     eligibilityScore: 84,
     riskFlags: [{ code: "account", label: "Requires account", severity: "low" }],
@@ -159,6 +184,7 @@ export const seedSweepstakes: Sweepstake[] = [
   },
   {
     id: "swp-voucher-bundle",
+    organizationId: DEFAULT_ORGANIZATION_ID,
     title: "Luxury Voucher Bundle",
     sponsor: "Prize Partner Network",
     url: "https://example.com/voucher-bundle",
@@ -182,6 +208,10 @@ export const seedSweepstakes: Sweepstake[] = [
     rulesExtractedAt: null,
     formUrl: null,
     emailAlias: null,
+    localRegion: null,
+    locationEligibilityScore: 35,
+    locationEligibilityNotes: ["Location eligibility is unclear until official rules are extracted."],
+    requiresInPersonAppearance: false,
     scamScore: 76,
     eligibilityScore: 39,
     riskFlags: [
@@ -201,6 +231,7 @@ export const seedSweepstakes: Sweepstake[] = [
 export const seedDiscoveryJobs: DiscoveryJob[] = [
   {
     id: "job-brand-watchlist",
+    organizationId: DEFAULT_ORGANIZATION_ID,
     label: "Default Search Discovery",
     query: "no purchase necessary sweepstakes enter online",
     seeds: [
@@ -215,23 +246,27 @@ export const seedDiscoveryJobs: DiscoveryJob[] = [
     lastRunAt: inDays(-1),
     createdAt: inDays(-8),
     notes: "Runs search-result discovery with mock provider in local dev.",
+    scope: "general",
   },
   {
     id: "job-local-travel",
-    label: "Local Travel Finds",
-    query: "travel sweepstakes northeast official rules",
-    seeds: ["travel sweepstakes northeast official rules"],
+    organizationId: DEFAULT_ORGANIZATION_ID,
+    label: "Local/Regional Finds",
+    query: "New York NY radio station contests no purchase necessary",
+    seeds: ["New York NY radio station contests no purchase necessary"],
     status: "queued",
     discoveredCount: 0,
     lastRunAt: null,
     createdAt: inDays(-2),
-    notes: "Queued search discovery run.",
+    notes: "Queued local search discovery run.",
+    scope: "local",
   },
 ];
 
 export const seedBlockedDomains: BlockedDomain[] = [
   {
     id: "blocked-example",
+    organizationId: DEFAULT_ORGANIZATION_ID,
     domain: "blocked.example.com",
     reason: "Mock suspicious offer wall used to verify blacklist filtering.",
     createdAt: new Date().toISOString(),
@@ -241,6 +276,7 @@ export const seedBlockedDomains: BlockedDomain[] = [
 export const seedAssistantTasks: AssistantTask[] = [
   {
     id: "task-coastal-retreat",
+    organizationId: DEFAULT_ORGANIZATION_ID,
     sweepstakeId: "swp-coastal-retreat",
     sweepstakeTitle: "Coastal Retreat Weekend Giveaway",
     status: "ready_for_review",
@@ -259,6 +295,7 @@ export const seedAssistantTasks: AssistantTask[] = [
   },
   {
     id: "task-smart-kitchen",
+    organizationId: DEFAULT_ORGANIZATION_ID,
     sweepstakeId: "swp-smart-kitchen",
     sweepstakeTitle: "Smart Kitchen Upgrade Sweepstakes",
     status: "queued",
@@ -275,6 +312,7 @@ export const seedAssistantTasks: AssistantTask[] = [
 export const seedEntryLogs: EntryLog[] = [
   {
     id: "entry-coastal-retreat-day-1",
+    organizationId: DEFAULT_ORGANIZATION_ID,
     sweepstakeId: "swp-coastal-retreat",
     sweepstakeTitle: "Coastal Retreat Weekend Giveaway",
     status: "submitted",
