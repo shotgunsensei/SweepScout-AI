@@ -55,7 +55,7 @@ export function getAppConfig(): AppConfig {
     supabaseConfigured,
     browserHeadless: process.env.BROWSER_HEADLESS !== "false",
     sqlitePath: process.env.LOCAL_SQLITE_PATH ?? ".data/sweepscout.sqlite",
-    openaiModel: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
+    openaiModel: process.env.OPENAI_MODEL ?? "gpt-5-mini",
     warnings,
   };
 }

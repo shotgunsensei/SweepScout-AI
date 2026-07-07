@@ -14,8 +14,8 @@ and falls back to `https://api.openai.com/v1` + `OPENAI_API_KEY` if those are se
 **Why direct fetch, not the SDK template:** both call sites (rules extraction,
 form-prefill AI field mapping) use the **Responses API** (`POST ${baseUrl}/responses`)
 with `text.format.json_schema` strict schemas. The proxy supports the Responses API
-with strict json_schema — verified working with `gpt-4.1-mini` (the project default,
-overridable via `OPENAI_MODEL`). The integration's SDK template packages are for
+with strict json_schema — the project default is `gpt-5-mini`
+(overridable via `OPENAI_MODEL`). The integration's SDK template packages are for
 chat/voice apps and were intentionally not adopted.
 
 **Testing gotcha:** the default seed sweepstakes use `https://example.com/...` URLs
