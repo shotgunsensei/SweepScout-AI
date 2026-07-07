@@ -1,0 +1,26 @@
+kind = "expo"
+previewPath = "/"
+title = "SweepScout AI Mobile"
+version = "1.0.0"
+id = "artifacts/sweepscout-mobile"
+router = "path"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[integratedSkills]]
+name = "mobile-ui"
+version = "1.0.0"
+
+[[services]]
+name = "mobile"
+paths = [ "/" ]
+localPort = 8082
+
+[services.development]
+run = "pnpm --filter @workspace/sweepscout-mobile run dev"
+
+[services.env]
+PORT = "8082"
+BASE_PATH = "/"
