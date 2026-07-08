@@ -1,4 +1,5 @@
 import { CalendarDays, ExternalLink, Repeat2, ShieldAlert, ShieldCheck, TicketCheck } from "lucide-react";
+import { Link } from "wouter";
 import { Badge, Panel, RiskList, ScorePill } from "@/components/ui";
 import { formatCurrency, formatDate, titleCase } from "@/lib/format";
 import { categoryLabel } from "@/lib/prize-categories";
@@ -8,11 +9,15 @@ export function SweepstakeCard(props: { item: Sweepstake; children?: React.React
   const item = props.item;
 
   return (
-    <Panel className="overflow-hidden">
+    <Panel className="overflow-hidden transition hover:-translate-y-0.5 hover:border-accent/45">
       <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold text-foreground sm:text-lg">{item.title}</h2>
+            <h2 className="text-base font-semibold text-foreground sm:text-lg">
+              <Link href={`/dashboard/sweepstakes/${item.id}`} className="hover:text-accent">
+                {item.title}
+              </Link>
+            </h2>
             <EligibilityBadge item={item} />
             <RiskBadge item={item} />
             <DeadlineBadge item={item} />
@@ -40,6 +45,9 @@ export function SweepstakeCard(props: { item: Sweepstake; children?: React.React
             </div>
           ) : null}
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+            <Link href={`/dashboard/sweepstakes/${item.id}`} className="inline-flex items-center gap-2 rounded-md border border-line bg-panel-strong px-3 py-1.5 text-foreground hover:border-accent/50">
+              Details
+            </Link>
             <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-accent">
               Source <ExternalLink size={15} aria-hidden="true" />
             </a>
@@ -59,6 +67,8 @@ export function SweepstakeCard(props: { item: Sweepstake; children?: React.React
     </Panel>
   );
 }
+
+export const SweepstakesCard = SweepstakeCard;
 
 export function EligibilityBadge({ item }: { item: Sweepstake }) {
   if (item.status === "eligible") {

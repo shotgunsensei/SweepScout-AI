@@ -804,3 +804,34 @@ export type ImportRunReport = {
   };
   items: ImportItemResult[];
 };
+
+export type AssistantIntent =
+  | "risk_explanation"
+  | "rules_summary"
+  | "compare"
+  | "can_i_enter"
+  | "manual_checklist"
+  | "missing_information"
+  | "recommend_today"
+  | "general";
+
+export type AssistantSourceRef = {
+  id: string;
+  sweepstakeId: string | null;
+  title: string;
+  field: string;
+  snippet: string;
+};
+
+export type AssistantAnswer = {
+  intent: AssistantIntent;
+  answer: string;
+  bullets: string[];
+  warnings: string[];
+  missingInformation: string[];
+  recommendedSweepstakeIds: string[];
+  sources: AssistantSourceRef[];
+  grounded: true;
+  usedOpenAI: boolean;
+  model: string;
+};

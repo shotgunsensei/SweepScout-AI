@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Clock3, MailWarning, ScrollText, ShieldAlert } from "lucide-react";
+import { ArrowRight, Bot, CheckCircle2, Clock3, MailWarning, ScrollText, ShieldAlert, Trophy } from "lucide-react";
 import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
@@ -14,7 +14,14 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Trust Dashboard" kicker="Sweepstakes compliance command center">
+      <PageHeader
+        title="Trust Dashboard"
+        kicker="AI sweepstakes command center"
+        description="A high-trust operating view for opportunity value, eligibility, deadlines, inbox alerts, and manual approval workflows."
+      >
+        <Link href="/dashboard/assistant" className="inline-flex h-9 items-center gap-2 rounded-md border border-line bg-panel-strong px-3 text-sm font-medium text-foreground hover:border-accent/50">
+          Ask AI <Bot size={16} aria-hidden="true" />
+        </Link>
         <Link href="/dashboard/queue" className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-[#07100d]">
           Review Queue <ArrowRight size={16} aria-hidden="true" />
         </Link>
@@ -32,18 +39,41 @@ function DashboardBody({ data }: { data: DashboardData }) {
     .slice()
     .sort((a, b) => b.scamScore - a.scamScore || new Date(a.endAt ?? 0).getTime() - new Date(b.endAt ?? 0).getTime())
     .slice(0, 4);
+  const totalPrizeValue = data.sweepstakes.reduce((sum, item) => sum + (item.prizeRetailValue ?? 0), 0);
+  const eligibleToday = data.sweepstakes.filter((item) => item.status === "eligible").length;
 
   return (
     <>
+      <Panel className="mb-5 overflow-hidden border-accent/20 bg-[linear-gradient(135deg,rgba(79,224,176,0.13),rgba(17,24,27,0.92)_48%)]">
+        <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Badge tone="ok">Human-approved</Badge>
+              <Badge>Discovery + scoring + inbox</Badge>
+              <Badge tone="warn">No auto-submit</Badge>
+            </div>
+            <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Today’s sweepstakes operating picture</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+              Prioritize high-value entries, resolve winner alerts, and keep compliance decisions visible before any manual submission.
+            </p>
+          </div>
+          <div className="grid min-w-72 gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <Badge tone="ok"><Trophy size={13} aria-hidden="true" /> Value tracked {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(totalPrizeValue)}</Badge>
+            <Badge tone={data.stats.inboxWinnerAlerts ? "warn" : "ok"}>{data.stats.inboxWinnerAlerts} winner alerts</Badge>
+            <Badge tone={data.stats.highRiskCount ? "danger" : "ok"}>{data.stats.highRiskCount} risk flags</Badge>
+          </div>
+        </div>
+      </Panel>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
-        <MetricCard label="Active" value={data.stats.activeSweepstakes} sublabel="tracked sweepstakes" />
-        <MetricCard label="Ending Soon" value={data.stats.endingSoon} sublabel="within 7 days" />
-        <MetricCard label="Queue" value={data.stats.queuedAssistantTasks} sublabel="awaiting review" />
-        <MetricCard label="Entries" value={data.stats.entriesThisWeek} sublabel="this week" />
-        <MetricCard label="Inbox" value={data.stats.inboxNewAlerts} sublabel={`${data.stats.inboxWinnerAlerts} winner flags`} />
-        <MetricCard label="Rules" value={data.stats.rulesNewAlerts} sublabel={`${data.stats.rulesDeadlineAlerts} deadline flags`} />
+        <MetricCard label="Eligible Today" value={eligibleToday} sublabel="ready after review" tone="ok" />
+        <MetricCard label="Ending Soon" value={data.stats.endingSoon} sublabel="within 7 days" tone={data.stats.endingSoon ? "warn" : "default"} />
+        <MetricCard label="Winner Alerts" value={data.stats.inboxWinnerAlerts} sublabel="review required" tone={data.stats.inboxWinnerAlerts ? "warn" : "default"} />
+        <MetricCard label="Risk Flags" value={data.stats.highRiskCount} sublabel="above threshold" tone={data.stats.highRiskCount ? "danger" : "default"} />
+        <MetricCard label="Total Entries" value={data.entryLogs.length} sublabel={`${data.stats.entriesThisWeek} this week`} />
+        <MetricCard label="Prize Value" value={new Intl.NumberFormat("en-US", { notation: "compact", style: "currency", currency: "USD", maximumFractionDigits: 1 }).format(totalPrizeValue)} />
+        <MetricCard label="Inbox" value={data.stats.inboxNewAlerts} sublabel="new alerts" />
         <MetricCard label="Avg Eligibility" value={`${data.stats.averageEligibilityScore}%`} />
-        <MetricCard label="High Risk" value={data.stats.highRiskCount} sublabel="above threshold" />
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">

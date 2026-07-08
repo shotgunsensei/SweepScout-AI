@@ -1,18 +1,38 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: dark;
-  --background: #0b0f10;
-  --foreground: #eef3f1;
-  --muted: #9ca8a5;
-  --panel: #14191b;
-  --panel-strong: #1c2326;
-  --line: #293234;
-  --accent: #52d3aa;
-  --accent-strong: #8fb7ff;
-  --danger: #ff6b6b;
-  --warning: #f2b84b;
-  --ok: #60d394;
+  color-scheme: dark light;
+  --background: #080d10;
+  --foreground: #f1f6f5;
+  --muted: #98a7a4;
+  --panel: #11181b;
+  --panel-strong: #182225;
+  --line: #263337;
+  --accent: #4fe0b0;
+  --accent-strong: #91b8ff;
+  --danger: #ff6f7d;
+  --warning: #f4bd52;
+  --ok: #67d995;
+  --surface-glass: rgb(17 24 27 / 0.78);
+  --shadow-soft: 0 22px 60px rgb(0 0 0 / 0.32);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #f5f8f8;
+    --foreground: #111819;
+    --muted: #61706e;
+    --panel: #ffffff;
+    --panel-strong: #eef4f3;
+    --line: #d8e2e0;
+    --accent: #087d61;
+    --accent-strong: #345fbd;
+    --danger: #ba2438;
+    --warning: #946111;
+    --ok: #137846;
+    --surface-glass: rgb(255 255 255 / 0.82);
+    --shadow-soft: 0 22px 60px rgb(21 44 49 / 0.12);
+  }
 }
 
 @theme inline {
@@ -27,6 +47,7 @@
   --color-danger: var(--danger);
   --color-warning: var(--warning);
   --color-ok: var(--ok);
+  --color-surface-glass: var(--surface-glass);
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
 }
@@ -37,16 +58,20 @@
 
 html {
   background: var(--background);
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgb(16 22 23 / 0.98) 0%, #0b0f10 42rem),
+    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--accent) 17%, transparent) 0, transparent 32rem),
+    radial-gradient(circle at 82% 6%, color-mix(in srgb, var(--accent-strong) 14%, transparent) 0, transparent 30rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 62%, var(--background)) 0%, var(--background) 44rem),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  letter-spacing: 0;
 }
 
 a {
@@ -67,4 +92,9 @@ textarea {
 
 * {
   scrollbar-color: var(--line) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }

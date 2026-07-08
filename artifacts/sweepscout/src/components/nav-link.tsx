@@ -1,5 +1,5 @@
-import { clsx } from "clsx";
 import {
+  Bot,
   ClipboardCheck,
   CalendarCheck2,
   Database,
@@ -17,8 +17,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { cn } from "@/lib/utils";
 
 const icons = {
+  assistant: Bot,
   calendar: CalendarCheck2,
   clipboard: ClipboardCheck,
   database: Database,
@@ -45,9 +47,11 @@ export function NavLink(props: { href: string; label: string; icon: NavIconKey }
   return (
     <Link
       href={props.href}
-      className={clsx(
-        "flex h-10 min-w-0 items-center gap-2 rounded-md px-3 text-sm transition",
-        active ? "bg-panel-strong text-foreground shadow-sm" : "text-muted hover:bg-panel hover:text-foreground",
+      className={cn(
+        "flex min-h-10 min-w-0 items-center gap-2 rounded-md px-3 text-sm transition",
+        active
+          ? "border border-accent/20 bg-accent/12 text-foreground shadow-sm"
+          : "border border-transparent text-muted hover:border-line hover:bg-panel hover:text-foreground",
       )}
       aria-current={active ? "page" : undefined}
     >

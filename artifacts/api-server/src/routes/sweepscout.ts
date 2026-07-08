@@ -9,6 +9,7 @@ import { scoreSweepstake } from "@/lib/scoring";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertNoForbiddenVaultFields, assertNoForbiddenVaultValues } from "@/lib/profile-safety";
 import { approveAssistantTask, recordEntryAttempt } from "@/lib/services/assistant";
+import { answerSweepScoutAssistant } from "@/lib/services/assistant-insights";
 import { analyzeExtensionPage, saveExtensionPage } from "@/lib/services/browser-extension";
 import { createStripeCheckoutSession, handleStripeWebhook } from "@/lib/services/billing";
 import { normalizeCategoryPreferences } from "@/lib/services/category-classifier";
@@ -452,6 +453,15 @@ router.post("/scoring/rescore", handler(async (req, res) => {
   await assertFeatureAllowed("scoring");
   const updated = await rescoreSweepstakeById(String(req.body?.sweepstakeId ?? ""));
   ok(res, updated);
+}));
+
+router.post("/assistant/ask", handler(async (req, res) => {
+  const rate = checkRateLimit(`assistant-ask:${clientKey(req)}`, 20, 60_000);
+  if (!rate.allowed) {
+    fail(res, "AI assistant is rate limited. Try again shortly.", 429);
+    return;
+  }
+  ok(res, await answerSweepScoutAssistant(req.body));
 }));
 
 router.post("/assistant/approve", handler(async (req, res) => {

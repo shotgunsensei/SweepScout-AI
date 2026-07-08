@@ -18,7 +18,11 @@ export default function DailyWorkflowPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Daily Sweepstakes Workflow" kicker="Manual approval execution cockpit">
+      <PageHeader
+        title="Daily Sweepstakes Workflow"
+        kicker="Manual approval execution cockpit"
+        description="Work today’s repeatable entries, new eligible opportunities, urgent deadlines, winner alerts, and suspicious decisions from one phone-friendly command surface."
+      >
         <Badge tone="ok">No auto-submit</Badge>
         <Badge tone="warn">Review links before opening</Badge>
       </PageHeader>
@@ -34,11 +38,11 @@ function WorkflowBody({ data }: { data: DailyWorkflowData }) {
   return (
     <div className="grid gap-5">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <MetricCard label="Repeatable Today" value={data.stats.todaysRepeatableCount} sublabel="daily, weekly, monthly" />
+        <MetricCard label="Repeatable Today" value={data.stats.todaysRepeatableCount} sublabel="daily, weekly, monthly" tone="ok" />
         <MetricCard label="New Eligible" value={data.stats.newEligibleCount} sublabel="no entry logged yet" />
-        <MetricCard label="48h Deadlines" value={data.stats.expiringSoonCount} sublabel="review urgency" />
-        <MetricCard label="Winner Email Review" value={data.stats.winnerVerificationCount} sublabel="claim links held" />
-        <MetricCard label="Decisions Needed" value={data.stats.suspiciousDecisionCount} sublabel="risk and spam flags" />
+        <MetricCard label="48h Deadlines" value={data.stats.expiringSoonCount} sublabel="review urgency" tone={data.stats.expiringSoonCount ? "warn" : "default"} />
+        <MetricCard label="Winner Email Review" value={data.stats.winnerVerificationCount} sublabel="claim links held" tone={data.stats.winnerVerificationCount ? "warn" : "default"} />
+        <MetricCard label="Decisions Needed" value={data.stats.suspiciousDecisionCount} sublabel="risk and spam flags" tone={data.stats.suspiciousDecisionCount ? "danger" : "default"} />
       </div>
 
       <PrefillNextPanel item={data.prefillNext} />
@@ -129,8 +133,8 @@ function PrefillNextPanel({ item }: { item: DailyWorkflowData["prefillNext"] }) 
             <Badge tone="ok">Prefill next</Badge>
             <Badge>Manual submit only</Badge>
           </div>
-          <h2 className="mt-3 text-xl font-semibold text-foreground">{item?.sweepstake.title ?? "No prefill-ready entry"}</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
+          <h2 className="mt-3 text-balance text-xl font-semibold text-foreground">{item?.sweepstake.title ?? "No prefill-ready entry"}</h2>
+          <p className="mt-2 max-w-3xl text-pretty text-sm leading-6 text-muted">
             Assisted prefill requires vault consent, per-entry approval, and a final review screen. SweepScout does not submit forms, bypass CAPTCHA, or open claim links automatically.
           </p>
         </div>

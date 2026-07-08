@@ -1,11 +1,14 @@
 import { Redirect, Route, Router as WouterRouter, Switch } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import HomePage from "@/pages/home";
 import DashboardPage from "@/pages/dashboard";
 import SweepstakesPage from "@/pages/sweepstakes";
+import SweepstakesDetailPage from "@/pages/sweepstakes-detail";
 import DiscoveryPage from "@/pages/discovery";
 import DailyWorkflowPage from "@/pages/daily-workflow";
 import PwaCompanionPage from "@/pages/pwa-companion";
 import ImportsPage from "@/pages/imports";
+import AssistantPage from "@/pages/assistant";
 import QueuePage from "@/pages/queue";
 import EntriesPage from "@/pages/entries";
 import SpamSourcesPage from "@/pages/spam-sources";
@@ -32,12 +35,14 @@ const queryClient = new QueryClient({
 function Router() {
   return (
     <Switch>
-      <Route path="/">{() => <Redirect to="/dashboard" />}</Route>
+      <Route path="/" component={HomePage} />
 
       <Route path="/dashboard" component={DashboardPage} />
+      <Route path="/dashboard/sweepstakes/:id" component={SweepstakesDetailPage} />
       <Route path="/dashboard/sweepstakes" component={SweepstakesPage} />
       <Route path="/dashboard/discovery" component={DiscoveryPage} />
       <Route path="/dashboard/imports" component={ImportsPage} />
+      <Route path="/dashboard/assistant" component={AssistantPage} />
       <Route path="/dashboard/daily" component={DailyWorkflowPage} />
       <Route path="/dashboard/mobile" component={PwaCompanionPage} />
       <Route path="/dashboard/queue" component={QueuePage} />
@@ -55,8 +60,10 @@ function Router() {
       <Route path="/vault" component={VaultPage} />
 
       <Route path="/sweepstakes">{() => <Redirect to="/dashboard/sweepstakes" />}</Route>
+      <Route path="/home">{() => <Redirect to="/" />}</Route>
       <Route path="/discovery">{() => <Redirect to="/dashboard/discovery" />}</Route>
       <Route path="/imports">{() => <Redirect to="/dashboard/imports" />}</Route>
+      <Route path="/assistant">{() => <Redirect to="/dashboard/assistant" />}</Route>
       <Route path="/daily">{() => <Redirect to="/dashboard/daily" />}</Route>
       <Route path="/mobile">{() => <Redirect to="/dashboard/mobile" />}</Route>
       <Route path="/queue">{() => <Redirect to="/dashboard/queue" />}</Route>
