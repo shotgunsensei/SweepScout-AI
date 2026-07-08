@@ -10,11 +10,25 @@ import type { DiscoveryJob } from "@/lib/types";
 
 export default function DiscoveryPage() {
   const { data, isLoading, isError } = useQuery({ queryKey: ["discovery"], queryFn: () => apiGet<DiscoveryJob[]>("/discovery/jobs") });
+  const runLocalDiscovery = useApiMutation("/discovery/run-local");
   const jobs = data ?? [];
 
   return (
     <AppShell>
       <PageHeader title="Discovery Jobs" kicker="Search-result discovery, no form submission">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            runLocalDiscovery.mutate(formToObject(event.currentTarget));
+          }}
+        >
+          <input type="hidden" name="maxResults" value="15" />
+          <SubmitButton disabled={runLocalDiscovery.isPending}>
+            <span className="inline-flex items-center gap-2">
+              <Radar size={15} aria-hidden="true" /> Run Local Discovery
+            </span>
+          </SubmitButton>
+        </form>
         <a href={apiUrl("/health")} className="rounded-md border border-line bg-panel-strong px-3 py-2 text-sm text-foreground">
           Health
         </a>
@@ -50,6 +64,7 @@ function DiscoveryCard({ job }: { job: DiscoveryJob }) {
         <Badge tone={job.status === "completed" ? "ok" : job.status === "failed" ? "danger" : "warn"}>{titleCase(job.status)}</Badge>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
+        <Badge tone={job.scope === "local" ? "ok" : "default"}>{job.scope === "local" ? "Local/regional" : "General"}</Badge>
         <Badge tone="ok">Found {job.discoveredCount}</Badge>
         <Badge>Last {formatDate(job.lastRunAt)}</Badge>
         {notes.counters ? <Badge>Skipped {notes.counters.skipped}</Badge> : null}

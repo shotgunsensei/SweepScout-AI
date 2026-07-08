@@ -1,0 +1,32 @@
+{
+  "name": "SweepScout AI",
+  "short_name": "SweepScout",
+  "description": "Mobile companion for SweepScout AI daily sweepstakes review.",
+  "start_url": "/dashboard/mobile",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0f10",
+  "theme_color": "#0b0f10",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Daily Queue",
+      "short_name": "Queue",
+      "url": "/dashboard/mobile#queue"
+    },
+    {
+      "name": "Winner Alerts",
+      "short_name": "Alerts",
+      "url": "/dashboard/mobile#alerts"
+    }
+  ]
+}

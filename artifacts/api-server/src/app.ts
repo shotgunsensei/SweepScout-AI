@@ -28,8 +28,15 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(
+  express.json({
+    limit: "2mb",
+    verify: (req, _res, buf) => {
+      (req as Request & { rawBody?: Buffer }).rawBody = Buffer.from(buf);
+    },
+  }),
+);
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 app.use("/api", router);
 

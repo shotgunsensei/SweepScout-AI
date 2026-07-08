@@ -32,6 +32,7 @@ export async function recordEntryAttempt(input: {
   userApproved: boolean;
   reviewConfirmed: boolean;
   purchaseRequiredAcknowledged: boolean;
+  timeSpentMinutes?: number;
   notes?: string;
 }) {
   return markEntryStatus({
@@ -40,6 +41,7 @@ export async function recordEntryAttempt(input: {
     userApproved: input.userApproved,
     reviewConfirmed: input.reviewConfirmed,
     purchaseRequiredAcknowledged: input.purchaseRequiredAcknowledged,
+    timeSpentMinutes: input.timeSpentMinutes,
     notes: input.notes,
   });
 }

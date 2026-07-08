@@ -4,7 +4,12 @@ import type {
   DashboardData,
   DiscoveryJob,
   EntryLog,
+  InboxAlert,
+  BillingSubscription,
+  Organization,
+  RulesChangeAlert,
   Sweepstake,
+  UsageSnapshot,
 } from "@/lib/types";
 
 export function buildDashboardData(input: {
@@ -12,7 +17,12 @@ export function buildDashboardData(input: {
   discoveryJobs: DiscoveryJob[];
   assistantTasks: AssistantTask[];
   entryLogs: EntryLog[];
+  inboxAlerts: InboxAlert[];
+  rulesChangeAlerts: RulesChangeAlert[];
   settings: AppSettings;
+  organization: Organization;
+  subscription: BillingSubscription;
+  usage: UsageSnapshot;
 }): DashboardData {
   const now = Date.now();
   const sevenDays = 7 * 24 * 60 * 60 * 1000;
@@ -42,6 +52,20 @@ export function buildDashboardData(input: {
       entriesThisWeek: entriesThisWeek.length,
       averageEligibilityScore,
       highRiskCount: input.sweepstakes.filter((item) => item.scamScore >= input.settings.maxScamScore).length,
+      inboxNewAlerts: input.inboxAlerts.filter((alert) => alert.status === "new").length,
+      inboxWinnerAlerts: input.inboxAlerts.filter(
+        (alert) => alert.status === "new" && alert.categories.includes("winner_notification"),
+      ).length,
+      inboxPhishingAlerts: input.inboxAlerts.filter(
+        (alert) => alert.status === "new" && alert.categories.includes("phishing_risk"),
+      ).length,
+      rulesNewAlerts: input.rulesChangeAlerts.filter((alert) => alert.status === "new").length,
+      rulesDeadlineAlerts: input.rulesChangeAlerts.filter(
+        (alert) => alert.status === "new" && alert.changedFields.includes("deadline"),
+      ).length,
+      rulesEligibilityAlerts: input.rulesChangeAlerts.filter(
+        (alert) => alert.status === "new" && alert.changedFields.includes("eligibility"),
+      ).length,
     },
     ...input,
   };

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "incremental": false,
+    "lib": ["es2022", "dom"],
+    "module": "es2022",
+    "moduleDetection": "legacy",
+    "moduleResolution": "bundler",
+    "noEmitOnError": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": []
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts"]
+}

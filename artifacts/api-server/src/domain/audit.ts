@@ -1,15 +1,18 @@
 import { randomUUID } from "node:crypto";
+import { DEFAULT_ORGANIZATION_ID } from "@/lib/services/tenancy";
 import { getStore } from "@/lib/storage/store";
 import type { AuditLog } from "@/lib/types";
 
-export type AuditLogInput = Omit<AuditLog, "id" | "createdAt"> & {
+export type AuditLogInput = Omit<AuditLog, "id" | "createdAt" | "organizationId"> & {
   id?: string;
   createdAt?: string;
+  organizationId?: string;
 };
 
 export async function writeAuditLog(input: AuditLogInput) {
   const log: AuditLog = {
     id: input.id ?? randomUUID(),
+    organizationId: input.organizationId ?? DEFAULT_ORGANIZATION_ID,
     actorId: input.actorId,
     action: input.action,
     entityType: input.entityType,

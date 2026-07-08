@@ -18,7 +18,18 @@ import {
 import { colors } from "@/constants/colors";
 import { apiGet, apiUrl, useApiMutation } from "@/lib/api";
 import { formatDate, titleCase } from "@/lib/format";
-import type { AdminSession, AppConfig, AuditLog, BlockedDomain, DiscoveryJob, EntryLog, ExtractionJob, Sweepstake } from "@/lib/types";
+import type {
+  AdminSession,
+  AppConfig,
+  AuditLog,
+  BlockedDomain,
+  DiscoveryJob,
+  EntryLog,
+  ExtractionJob,
+  SaaSAdminSummary,
+  SponsorReputationReport,
+  Sweepstake,
+} from "@/lib/types";
 
 type AdminResponse = {
   admin: AdminSession;
@@ -28,6 +39,8 @@ type AdminResponse = {
   blockedDomains: BlockedDomain[];
   entries: EntryLog[];
   auditLogs: AuditLog[];
+  saas: SaaSAdminSummary;
+  reputation: SponsorReputationReport;
   config: AppConfig;
 };
 
@@ -53,7 +66,7 @@ export default function AdminScreen() {
 }
 
 function AdminBody({ data }: { data: AdminResponse }) {
-  const { admin, discoveryJobs, extractionJobs, sweepstakes, blockedDomains, entries, auditLogs, config } = data;
+  const { admin, discoveryJobs, extractionJobs, sweepstakes, blockedDomains, entries, auditLogs, saas, reputation, config } = data;
   const byId = new Map(sweepstakes.map((item) => [item.id, item]));
   const failedUrls = extractionJobs
     .filter((job) => job.status === "failed" || job.status === "needs_review")
@@ -79,6 +92,10 @@ function AdminBody({ data }: { data: AdminResponse }) {
             <MetricCard label="Blocked Domains" value={blockedDomains.length} />
             <MetricCard label="Audit Logs" value={auditLogs.length} />
           </View>
+
+          <SaaSOperationsCard summary={saas} />
+
+          <SponsorReputationCard report={reputation} />
 
           <Card>
             <SectionHeader title="Failed URLs" eyebrow="Extraction failures" />
@@ -169,6 +186,76 @@ function AdminBody({ data }: { data: AdminResponse }) {
         </View>
       </ScrollView>
     </Screen>
+  );
+}
+
+function SaaSOperationsCard({ summary }: { summary: SaaSAdminSummary }) {
+  const features = [
+    ["Discovery", summary.usage.limits.discovery],
+    ["Scoring", summary.usage.limits.scoring],
+    ["Prefill", summary.usage.limits.prefill],
+    ["Inbox", summary.usage.limits.inboxMonitoring],
+    ["Extension", summary.usage.limits.browserExtension],
+    ["Reports", summary.usage.limits.advancedReporting],
+  ] as const;
+  return (
+    <Card>
+      <SectionHeader title="Tenant & Billing" eyebrow={summary.organization.slug} />
+      <View style={styles.wrap}>
+        <MetricCard label="Organization" value={summary.organization.name} />
+        <MetricCard label="Plan" value={summary.usage.limits.name} sublabel={`$${summary.usage.limits.monthlyPriceUsd}/mo`} />
+        <MetricCard label="Saved" value={`${summary.usage.savedSweepstakes}/${summary.usage.limits.savedSweepstakes}`} />
+        <MetricCard label="Discovery" value={`${summary.usage.discoveryJobsThisMonth}/${summary.usage.limits.discoveryJobsPerMonth}`} />
+      </View>
+      <View style={styles.wrap}>
+        <Badge tone={summary.stripe.configured ? "ok" : "warn"}>Stripe {summary.stripe.configured ? "configured" : "missing"}</Badge>
+        <Badge tone={summary.stripe.priceIds.pro ? "ok" : "warn"}>Pro price {summary.stripe.priceIds.pro ? "set" : "missing"}</Badge>
+        <Badge tone={summary.stripe.priceIds.power ? "ok" : "warn"}>Power price {summary.stripe.priceIds.power ? "set" : "missing"}</Badge>
+        <Badge tone={summary.manualApprovalRequired ? "ok" : "danger"}>
+          Manual approval {summary.manualApprovalRequired ? "required" : "off"}
+        </Badge>
+      </View>
+      <View style={styles.wrap}>
+        {features.map(([label, enabled]) => (
+          <Badge key={label} tone={enabled ? "ok" : "default"}>
+            {enabled ? "Enabled" : "Locked"}: {label}
+          </Badge>
+        ))}
+      </View>
+      <Text style={styles.mutedText}>Subscription status: {titleCase(summary.subscription.status)}</Text>
+    </Card>
+  );
+}
+
+function SponsorReputationCard({ report }: { report: SponsorReputationReport }) {
+  const highRisk = report.records.filter((record) => record.recommendation !== "allow").slice(0, 4);
+  return (
+    <Card>
+      <SectionHeader title="Sponsor Reputation" eyebrow="Global risk score" />
+      <View style={styles.wrap}>
+        <MetricCard label="Tracked" value={report.totals.domainsTracked} />
+        <MetricCard label="Downranked" value={report.totals.downrankedDomains} />
+        <MetricCard label="Blocked" value={report.totals.blockedDomains} />
+        <MetricCard label="Critical" value={report.totals.criticalDomains} />
+      </View>
+      <View style={{ gap: 10 }}>
+        {highRisk.length ? (
+          highRisk.map((record) => (
+            <Card key={record.domain} compact>
+              <View style={styles.wrap}>
+                <Text style={styles.cardTitle}>{record.domain}</Text>
+                <Badge tone={record.recommendation === "block" ? "danger" : "warn"}>{record.riskScore}/100</Badge>
+                <Badge tone={record.recommendation === "block" ? "danger" : "warn"}>{titleCase(record.recommendation)}</Badge>
+              </View>
+              <Text style={styles.mutedText}>{record.sponsor ?? "Sponsor unknown"}</Text>
+              <Text style={styles.bodyText}>{record.reasons.slice(0, 2).join(" ") || "Reputation threshold reached."}</Text>
+            </Card>
+          ))
+        ) : (
+          <Text style={styles.bodyText}>No sponsor or domain has crossed the downrank threshold yet.</Text>
+        )}
+      </View>
+    </Card>
   );
 }
 

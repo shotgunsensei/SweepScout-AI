@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { writeAuditLog } from "@/lib/audit";
+import { ensureSweepstakeEmailAlias } from "@/lib/services/email-aliases";
 import { assertNoForbiddenSensitiveText } from "@/lib/profile-safety";
 import { assertEntryApproval } from "@/lib/safety";
+import { categoryPriority, normalizeCategoryPreferences, normalizePrizeCategory } from "@/lib/services/category-classifier";
 import { getStore } from "@/lib/storage/store";
-import type { EntryLog, EntryStatus, Sweepstake } from "@/lib/types";
+import type { EntryLog, EntryStatus, PrizeCategory, Sweepstake } from "@/lib/types";
 
 export type EntryFrequency = "daily" | "weekly" | "monthly" | "one_time" | "unknown";
 
@@ -15,6 +17,8 @@ export type EntryQueueItem = {
   nextEntryAt: string | null;
   lastSubmittedAt: string | null;
   blockedReason: string | null;
+  categoryPriority: number;
+  categoryPreferred: boolean;
 };
 
 export type ReminderDay = {
@@ -38,6 +42,7 @@ export type MarkEntryStatusInput = {
   userApproved?: boolean;
   reviewConfirmed?: boolean;
   purchaseRequiredAcknowledged?: boolean;
+  timeSpentMinutes?: number;
   notes?: string;
 };
 
@@ -46,12 +51,24 @@ const WINDOW_DECISION_STATUSES = new Set<EntryStatus>(["submitted", "skipped"]);
 
 export async function getEntryTrackingData(): Promise<EntryTrackingData> {
   const store = await getStore();
-  const [sweepstakes, entries] = await Promise.all([store.listSweepstakes(), store.listEntryLogs()]);
-  return buildEntryTrackingData(sweepstakes, entries);
+  const [sweepstakes, entries, profile] = await Promise.all([
+    store.listSweepstakes(),
+    store.listEntryLogs(),
+    store.getUserProfile(),
+  ]);
+  return buildEntryTrackingData(sweepstakes, entries, new Date(), profile.preferences.categories);
 }
 
-export function buildEntryTrackingData(sweepstakes: Sweepstake[], entries: EntryLog[], now = new Date()): EntryTrackingData {
-  const queueItems = sweepstakes.map((sweepstake) => buildQueueItem(sweepstake, entries, now));
+export function buildEntryTrackingData(
+  sweepstakes: Sweepstake[],
+  entries: EntryLog[],
+  now = new Date(),
+  categoryPreferences: readonly string[] = [],
+): EntryTrackingData {
+  const preferences = normalizeCategoryPreferences(categoryPreferences);
+  const queueItems = sweepstakes
+    .map((sweepstake) => buildQueueItem(sweepstake, entries, now, preferences))
+    .sort((a, b) => sortQueueItems(a, b, now));
   const eligibleQueue = queueItems.filter((item) => isQueueEligible(item.sweepstake) && item.canEnter);
   const expiringSoon = queueItems.filter((item) => {
     const deadline = parseDate(item.sweepstake.endAt);
@@ -80,7 +97,11 @@ export function buildEntryTrackingData(sweepstakes: Sweepstake[], entries: Entry
 
 export async function markEntryStatus(input: MarkEntryStatusInput) {
   const store = await getStore();
-  const [sweepstake, entries] = await Promise.all([store.getSweepstake(input.sweepstakeId), store.listEntryLogs()]);
+  const [sweepstake, entries, settings] = await Promise.all([
+    store.getSweepstake(input.sweepstakeId),
+    store.listEntryLogs(),
+    store.getSettings(),
+  ]);
   if (!sweepstake) {
     throw new Error("Sweepstake not found.");
   }
@@ -105,17 +126,23 @@ export async function markEntryStatus(input: MarkEntryStatusInput) {
     }
   }
 
+  const aliasAssignment = await ensureSweepstakeEmailAlias(sweepstake);
+  const sweepstakeForEntry = aliasAssignment.sweepstake;
   const now = new Date().toISOString();
   const entry: EntryLog = {
     id: `entry-${randomUUID()}`,
-    sweepstakeId: sweepstake.id,
-    sweepstakeTitle: sweepstake.title,
+    organizationId: sweepstakeForEntry.organizationId,
+    sweepstakeId: sweepstakeForEntry.id,
+    sweepstakeTitle: sweepstakeForEntry.title,
     status: input.status,
     attemptedAt: now,
     submittedAt: input.status === "submitted" ? now : null,
     confirmationCode: null,
     notes,
-    formUrl: sweepstake.formUrl ?? sweepstake.extractedRules?.formUrl ?? sweepstake.url,
+    emailAlias: aliasAssignment.alias,
+    timeSpentMinutes: input.timeSpentMinutes ?? estimatedStatusMinutes(input.status, settings.roi.manualEntryMinutes),
+    prefillSavedMinutes: 0,
+    formUrl: sweepstakeForEntry.formUrl ?? sweepstakeForEntry.extractedRules?.formUrl ?? sweepstakeForEntry.url,
     screenshotPath: null,
     prefillFields: [],
     blockers: [],
@@ -138,6 +165,7 @@ export async function markEntryStatus(input: MarkEntryStatusInput) {
       hasCaptcha: sweepstake.hasCaptcha,
       purchaseRequired: sweepstake.purchaseRequired,
       noPurchaseMethodFound: sweepstake.noPurchaseMethodFound,
+      emailAlias: saved.emailAlias,
     },
   });
 
@@ -174,13 +202,19 @@ export function frequencyLabel(frequency: EntryFrequency) {
   return "Unknown";
 }
 
-function buildQueueItem(sweepstake: Sweepstake, entries: EntryLog[], now = new Date()): EntryQueueItem {
+function buildQueueItem(
+  sweepstake: Sweepstake,
+  entries: EntryLog[],
+  now = new Date(),
+  categoryPreferences: readonly PrizeCategory[] = normalizeCategoryPreferences([]),
+): EntryQueueItem {
   const frequency = normalizeEntryFrequency(sweepstake.entryFrequency);
   const lastSubmittedAt = latestSubmittedAt(sweepstake.id, entries);
   const nextEntryAt = nextAvailableAt(frequency, lastSubmittedAt);
   const deadline = parseDate(sweepstake.endAt);
   const currentWindowDecision = latestCurrentWindowDecision(sweepstake.id, entries, frequency, now);
   const expired = deadline ? deadline.getTime() < now.getTime() : sweepstake.status === "expired";
+  const category = normalizePrizeCategory(sweepstake.category);
 
   let blockedReason: string | null = null;
   if (expired) {
@@ -209,6 +243,8 @@ function buildQueueItem(sweepstake: Sweepstake, entries: EntryLog[], now = new D
     nextEntryAt: blockedReason && nextEntryAt ? nextEntryAt : currentWindowDecision ? nextAvailableAt(frequency, currentWindowDecision.attemptedAt) : nextEntryAt,
     lastSubmittedAt,
     blockedReason,
+    categoryPriority: categoryPriority(category, categoryPreferences),
+    categoryPreferred: categoryPreferences.includes(category),
   };
 }
 
@@ -298,7 +334,33 @@ function buildReminderDays(queueItems: EntryQueueItem[], now: Date) {
     }
   }
 
+  for (const day of days) {
+    day.reminders.sort((a, b) => sortQueueItems(a, b, now));
+  }
+
   return days;
+}
+
+function sortQueueItems(a: EntryQueueItem, b: EntryQueueItem, now: Date) {
+  if (a.canEnter !== b.canEnter) return a.canEnter ? -1 : 1;
+  const categoryDelta = a.categoryPriority - b.categoryPriority;
+  if (categoryDelta !== 0) return categoryDelta;
+  const deadlineDelta = deadlineRank(a.sweepstake.endAt, now) - deadlineRank(b.sweepstake.endAt, now);
+  if (deadlineDelta !== 0) return deadlineDelta;
+  const valueDelta = (b.sweepstake.prizeRetailValue ?? 0) - (a.sweepstake.prizeRetailValue ?? 0);
+  if (valueDelta !== 0) return valueDelta;
+  const eligibilityDelta = b.sweepstake.eligibilityScore - a.sweepstake.eligibilityScore;
+  if (eligibilityDelta !== 0) return eligibilityDelta;
+  const riskDelta = a.sweepstake.scamScore - b.sweepstake.scamScore;
+  if (riskDelta !== 0) return riskDelta;
+  return a.sweepstake.title.localeCompare(b.sweepstake.title);
+}
+
+function deadlineRank(value: string | null, now: Date) {
+  const deadline = parseDate(value);
+  if (!deadline) return Number.POSITIVE_INFINITY;
+  const delta = deadline.getTime() - now.getTime();
+  return delta < 0 ? Number.POSITIVE_INFINITY : delta;
 }
 
 function defaultStatusNote(status: MarkEntryStatusInput["status"]) {
@@ -307,6 +369,13 @@ function defaultStatusNote(status: MarkEntryStatusInput["status"]) {
   if (status === "suspicious") return "User marked this sweepstake as suspicious.";
   if (status === "winner_notification") return "Winner notification received; follow up manually.";
   return "User marked this sweepstake as expired.";
+}
+
+function estimatedStatusMinutes(status: MarkEntryStatusInput["status"], manualEntryMinutes: number) {
+  if (status === "submitted") return manualEntryMinutes;
+  if (status === "winner_notification") return 3;
+  if (status === "suspicious" || status === "skipped") return 2;
+  return 1;
 }
 
 function parseDate(value: string | null | undefined) {

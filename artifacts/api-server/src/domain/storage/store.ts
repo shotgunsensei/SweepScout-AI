@@ -3,11 +3,17 @@ import type {
   AppSettings,
   AssistantTask,
   AuditLog,
+  BillingSubscription,
   BlockedDomain,
   DashboardData,
   DiscoveryJob,
   EntryLog,
   ExtractionJob,
+  InboxAlert,
+  Organization,
+  OrganizationMembership,
+  RulesChangeAlert,
+  RulesSnapshot,
   Sweepstake,
   UserProfile,
 } from "@/lib/types";
@@ -26,8 +32,24 @@ export type SweepScoutStore = {
   saveAssistantTask(task: AssistantTask): Promise<AssistantTask>;
   listEntryLogs(): Promise<EntryLog[]>;
   saveEntryLog(entry: EntryLog): Promise<EntryLog>;
+  listInboxAlerts(limit?: number): Promise<InboxAlert[]>;
+  getInboxAlert(id: string): Promise<InboxAlert | null>;
+  saveInboxAlert(alert: InboxAlert): Promise<InboxAlert>;
+  listRulesSnapshots(sweepstakeId?: string): Promise<RulesSnapshot[]>;
+  saveRulesSnapshot(snapshot: RulesSnapshot): Promise<RulesSnapshot>;
+  listRulesChangeAlerts(limit?: number): Promise<RulesChangeAlert[]>;
+  getRulesChangeAlert(id: string): Promise<RulesChangeAlert | null>;
+  saveRulesChangeAlert(alert: RulesChangeAlert): Promise<RulesChangeAlert>;
   listExtractionJobs(): Promise<ExtractionJob[]>;
   saveExtractionJob(job: ExtractionJob): Promise<ExtractionJob>;
+  listOrganizations(): Promise<Organization[]>;
+  getActiveOrganization(): Promise<Organization>;
+  saveOrganization(organization: Organization): Promise<Organization>;
+  listMemberships(organizationId?: string): Promise<OrganizationMembership[]>;
+  getActiveMembership(): Promise<OrganizationMembership>;
+  saveMembership(membership: OrganizationMembership): Promise<OrganizationMembership>;
+  getBillingSubscription(organizationId?: string): Promise<BillingSubscription>;
+  saveBillingSubscription(subscription: BillingSubscription): Promise<BillingSubscription>;
   getUserProfile(): Promise<UserProfile>;
   saveUserProfile(profile: UserProfile): Promise<UserProfile>;
   getSettings(): Promise<AppSettings>;

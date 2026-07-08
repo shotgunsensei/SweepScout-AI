@@ -5,6 +5,7 @@ import { z } from "zod";
 import { writeAuditLog } from "@/lib/audit";
 import { isBlockedDomain } from "@/lib/discovery/url";
 import { getAppConfig, requireOpenAIAccess } from "@/lib/env";
+import { ensureSweepstakeEmailAlias } from "@/lib/services/email-aliases";
 import { detectProtectionSignals } from "@/lib/safety";
 import { getStore } from "@/lib/storage/store";
 import type { EntryLog, PrefillFieldResult, PrefillProfileField, Sweepstake, UserProfile } from "@/lib/types";
@@ -199,17 +200,22 @@ export async function runAssistedFormPrefill(rawInput: PrefillFormInput) {
       });
     }
 
+    const aliasAssignment = await ensureSweepstakeEmailAlias(sweepstake);
     const captchaBlockers = signals.filter((signal) => signal.kind === "captcha").map((signal) => signal.message);
     const screenshotPath = await capturePrefillScreenshot(page, entryId);
     const entry: EntryLog = {
       id: entryId,
-      sweepstakeId: sweepstake.id,
-      sweepstakeTitle: sweepstake.title,
+      organizationId: aliasAssignment.sweepstake.organizationId,
+      sweepstakeId: aliasAssignment.sweepstake.id,
+      sweepstakeTitle: aliasAssignment.sweepstake.title,
       status: "prefilled",
       attemptedAt: new Date().toISOString(),
       submittedAt: null,
       confirmationCode: null,
       notes: buildPrefillNotes(fillResults, captchaBlockers),
+      emailAlias: aliasAssignment.alias,
+      timeSpentMinutes: settings.roi.prefillReviewMinutes,
+      prefillSavedMinutes: settings.roi.prefillSavedMinutes,
       formUrl,
       screenshotPath,
       prefillFields: fillResults,

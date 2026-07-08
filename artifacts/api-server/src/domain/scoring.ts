@@ -1,5 +1,5 @@
 import { normalizeDiscoveryUrl } from "@/lib/discovery/url";
-import type { RiskFlag, Sweepstake, SweepstakeStatus, SweepstakesRules, UserProfile } from "@/lib/types";
+import type { RiskFlag, SponsorDomainReputation, Sweepstake, SweepstakeStatus, SweepstakesRules, UserProfile } from "@/lib/types";
 
 type ScoreStatus = Extract<SweepstakeStatus, "eligible" | "ineligible" | "suspicious" | "expired">;
 
@@ -21,10 +21,13 @@ const MANAGED_FLAG_CODES = new Set([
   "duplicate-url",
   "expired",
   "high-prize",
+  "in-person-required",
+  "location-fit",
   "missing-deadline",
   "missing-rules",
   "no-purchase-method",
   "purchase-required",
+  "sponsor-reputation",
   "ssn-before-winning",
   "state",
 ]);
@@ -34,6 +37,7 @@ export function scoreSweepstake(
   profile: UserProfile,
   extractedRules?: Partial<SweepstakesRules>,
   allSweepstakes: Sweepstake[] = [],
+  reputation?: SponsorDomainReputation | null,
 ): SweepstakesScore {
   const facts = getScoringFacts(sweepstake, extractedRules);
   const flags: RiskFlag[] = sweepstake.riskFlags.filter((flag) => !MANAGED_FLAG_CODES.has(flag.code));
@@ -47,6 +51,7 @@ export function scoreSweepstake(
   const ageBlocked = typeof facts.minimumAge === "number" && userAge !== null && facts.minimumAge > userAge;
   const stateBlocked = !isAllowed(profile.state, facts.eligibleStates);
   const countryBlocked = !isAllowed(profile.country, facts.eligibleCountries);
+  const inPersonBlocked = facts.requiresInPersonAppearance && !profile.preferences.allowInPersonContests;
   const noPurchaseMethodFound = Boolean(
     sweepstake.noPurchaseMethodFound ||
       (sweepstake.extractedRules && !sweepstake.extractedRules.noPurchaseMethod) ||
@@ -75,6 +80,23 @@ export function scoreSweepstake(
     eligibilityScore -= 50;
     flags.push({ code: "country", label: "User country is not eligible", severity: "high" });
     notes.push(`Rejected: ${profile.country || "profile country"} is not listed as eligible.`);
+  }
+
+  if (inPersonBlocked) {
+    scamScore += 8;
+    eligibilityScore -= 45;
+    flags.push({ code: "in-person-required", label: "In-person appearance required", severity: "high" });
+    notes.push("Rejected: profile is set to avoid contests requiring in-person appearance or pickup.");
+  } else if (facts.requiresInPersonAppearance) {
+    eligibilityScore -= 6;
+    flags.push({ code: "in-person-required", label: "In-person appearance may be required", severity: "medium" });
+    notes.push("Manual review: in-person appearance or pickup may be required.");
+  }
+
+  if (facts.locationEligibilityScore < 50) {
+    eligibilityScore -= 15;
+    flags.push({ code: "location-fit", label: "Low local eligibility confidence", severity: "medium" });
+    notes.push("Needs review: location eligibility score is low.");
   }
 
   if (facts.purchaseRequired) {
@@ -132,6 +154,21 @@ export function scoreSweepstake(
     notes.push("Needs review: official rules have not been extracted yet.");
   }
 
+  if (reputation && reputation.recommendation !== "allow") {
+    const reputationBlocked = reputation.recommendation === "block";
+    scamScore += reputationBlocked ? 35 : reputation.riskScore >= 70 ? 22 : 12;
+    eligibilityScore -= reputationBlocked ? 30 : reputation.riskScore >= 70 ? 18 : 8;
+    flags.push({
+      code: "sponsor-reputation",
+      label: `Sponsor/domain reputation ${reputation.riskScore}/100`,
+      severity: reputationBlocked || reputation.riskScore >= 80 ? "high" : "medium",
+    });
+    notes.push(`Needs review: sponsor/domain reputation is ${reputation.riskLevel} (${reputation.riskScore}/100).`);
+    for (const reason of reputation.reasons.slice(0, 3)) {
+      notes.push(`Reputation signal: ${reason}`);
+    }
+  }
+
   if (sweepstake.extractedRules?.ssnRequested) {
     scamScore += 50;
     flags.push({ code: "ssn-before-winning", label: "Requests SSN before winning", severity: "high" });
@@ -146,8 +183,9 @@ export function scoreSweepstake(
 
   scamScore += severityScore(sweepstake.riskFlags.filter((flag) => !MANAGED_FLAG_CODES.has(flag.code)));
 
-  const hardIneligible = expired || ageBlocked || stateBlocked || countryBlocked;
-  const suspicious = facts.purchaseRequired || noPurchaseMethodFound || Boolean(duplicate) || scamScore >= 60;
+  const hardIneligible = expired || ageBlocked || stateBlocked || countryBlocked || inPersonBlocked;
+  const reputationRisk = Boolean(reputation && reputation.recommendation !== "allow" && reputation.riskScore >= 45);
+  const suspicious = facts.purchaseRequired || noPurchaseMethodFound || Boolean(duplicate) || reputationRisk || scamScore >= 60;
   const status: ScoreStatus = expired ? "expired" : hardIneligible ? "ineligible" : suspicious ? "suspicious" : "eligible";
 
   if (status === "eligible") {
@@ -180,6 +218,8 @@ function getScoringFacts(sweepstake: Sweepstake, extractedRules?: Partial<Sweeps
     minimumAge: extractedRules?.minAge ?? sweepstake.ageRequirement,
     prizeValue: extractedRules?.prizeRetailValue ?? sweepstake.prizeRetailValue ?? 0,
     purchaseRequired: extractedRules?.purchaseRequired ?? sweepstake.purchaseRequired,
+    requiresInPersonAppearance: sweepstake.requiresInPersonAppearance,
+    locationEligibilityScore: sweepstake.locationEligibilityScore ?? 50,
   };
 }
 
