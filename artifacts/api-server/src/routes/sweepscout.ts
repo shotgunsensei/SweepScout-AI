@@ -56,6 +56,7 @@ import {
 import { runQueuedDiscoveryEnrichment, undoAdministrativeMerge } from "@/lib/enrichment/admin";
 import { requireRequestAuth } from "@/lib/auth/session";
 import { parseRadarFilters, SupabaseRadarRepository } from "@/lib/radar";
+import { PersonalizationRepository } from "@/lib/personalization";
 
 const router: IRouter = Router();
 
@@ -189,6 +190,78 @@ router.put("/opportunities/:id/save", handler(async (req, res) => {
 router.put("/opportunities/:id/status", handler(async (req, res) => {
   const auth = requireRequestAuth(req);
   ok(res, await new SupabaseRadarRepository().setStatus(auth.userId, String(req.params.id), String(req.body?.status ?? "")));
+}));
+
+router.get("/hangar", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().hangar(auth.userId, req.query));
+}));
+
+router.put("/hangar/:id", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().updateSaved(auth.userId, String(req.params.id), req.body ?? {}));
+}));
+
+router.post("/hangar/bulk", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().bulk(auth.userId, req.body ?? {}));
+}));
+
+router.get("/mission-log", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().missionLog(auth.userId));
+}));
+
+router.get("/opportunities/:id/notes", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().notes(auth.userId, String(req.params.id)));
+}));
+
+router.post("/opportunities/:id/notes", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().addNote(auth.userId, String(req.params.id), req.body?.note), 201);
+}));
+
+router.put("/notes/:id", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().updateNote(auth.userId, String(req.params.id), req.body?.note));
+}));
+
+router.delete("/notes/:id", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().deleteNote(auth.userId, String(req.params.id)));
+}));
+
+router.get("/search-profiles", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().profiles(auth.userId));
+}));
+
+router.post("/search-profiles", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().createProfile(auth.userId, req.body ?? {}), 201);
+}));
+
+router.put("/search-profiles/:id", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().updateProfile(auth.userId, String(req.params.id), req.body ?? {}));
+}));
+
+router.delete("/search-profiles/:id", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().deleteProfile(auth.userId, String(req.params.id)));
+}));
+
+router.get("/search-profile-alerts", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new PersonalizationRepository().profileAlerts(auth.userId));
+}));
+
+router.get("/personal/calendar.ics", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  const calendar = await new PersonalizationRepository().calendar(auth.userId);
+  res.type("text/calendar").setHeader("Content-Disposition", 'attachment; filename="play-pack-pilot-missions.ics"');
+  res.send(calendar);
 }));
 
 router.get("/tenant", handler(async (_req, res) => {

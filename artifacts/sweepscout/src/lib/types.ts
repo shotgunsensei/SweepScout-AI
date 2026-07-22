@@ -94,10 +94,15 @@ export type RadarOpportunity = {
   userStatus: string | null;
   popularity: number;
   matchScore: number;
+  matchFactors: Array<{ key: string; label: string; impact: "positive" | "negative" | "neutral"; points: number; explanation: string }>;
   eligibilityStatus: "eligible" | "ineligible" | "review";
 };
 
 export type RadarPage = { items: RadarOpportunity[]; total: number; page: number; pageSize: number; hasMore: boolean; sort: string };
+export type PersonalSweepstake = { sweepstakesId: string; title: string; sponsor: string; officialUrl: string; savedAt: string | null; priority: "low" | "normal" | "high"; notes: string; deadline: string | null; timezone: string; frequency: string; prizeValue: number | null; currency: string; status: string; lastEnteredAt: string | null; nextEntryDueAt: string | null; entryCount: number; updatedAt: string | null };
+export type HangarData = { items: PersonalSweepstake[]; total: number };
+export type MissionLogData = { enteredToday: PersonalSweepstake[]; dailyDue: PersonalSweepstake[]; enteredPreviously: PersonalSweepstake[]; skipped: PersonalSweepstake[]; hidden: PersonalSweepstake[]; won: PersonalSweepstake[]; expired: PersonalSweepstake[]; disclaimer: string };
+export type SearchProfile = { id: string; name: string; filters: Record<string, string | number>; alert_enabled: boolean; created_at: string; updated_at: string; matchCount?: number };
 export type OpportunityDetail = RadarOpportunity & {
   evidence: Array<{ field_name: string; field_value: unknown; confidence: number | string; source_reference: string; evidence_text: string; evidence_location: unknown; authoritative: boolean; extracted_at: string }>;
   safety: string[];

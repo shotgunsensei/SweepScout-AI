@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 const nav: Array<{ href: string; label: string; description: string; icon: NavIconKey }> = [
   { href: "/dashboard", label: "Flight Deck", description: "Dashboard", icon: "home" },
   { href: "/dashboard/sweepstakes", label: "Radar", description: "Opportunity feed", icon: "radar" },
+  { href: "/dashboard/hangar", label: "Hangar", description: "Saved and prioritized missions", icon: "hangar" },
   { href: "/dashboard/entries", label: "Mission Log", description: "Entered and skipped tracking", icon: "clipboard" },
   { href: "/dashboard/daily", label: "Flight Plan", description: "Daily schedule and reminders", icon: "calendar" },
   { href: "/dashboard/assistant", label: "Co-Pilot", description: "AI research assistant", icon: "assistant" },

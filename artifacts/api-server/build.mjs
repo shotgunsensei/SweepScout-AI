@@ -20,6 +20,7 @@ async function buildAll() {
       scanner: path.resolve(artifactDir, "src/domain/scanner/index.ts"),
       enrichment: path.resolve(artifactDir, "src/domain/enrichment/index.ts"),
       radar: path.resolve(artifactDir, "src/domain/radar/index.ts"),
+      personalization: path.resolve(artifactDir, "src/domain/personalization/index.ts"),
     },
     platform: "node",
     bundle: true,

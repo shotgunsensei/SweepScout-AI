@@ -9,6 +9,7 @@ import DailyWorkflowPage from "@/pages/daily-workflow";
 import ImportsPage from "@/pages/imports";
 import AssistantPage from "@/pages/assistant";
 import EntriesPage from "@/pages/entries";
+import HangarPage from "@/pages/hangar";
 import SpamSourcesPage from "@/pages/spam-sources";
 import RoiPage from "@/pages/roi";
 import ReportsPage from "@/pages/reports";
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/dashboard">{() => <ProtectedRoute><DashboardPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/sweepstakes/:id">{() => <ProtectedRoute><SweepstakesDetailPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/sweepstakes">{() => <ProtectedRoute><SweepstakesPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/hangar">{() => <ProtectedRoute><HangarPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/discovery">{() => <ProtectedRoute><DiscoveryPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/imports">{() => <ProtectedRoute><ImportsPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/assistant">{() => <ProtectedRoute><AssistantPage /></ProtectedRoute>}</Route>

@@ -6,6 +6,8 @@ export type RadarFilters = {
   minSourceConfidence: number | null; saved: boolean | null; entered: boolean | null; sort: RadarSort; page: number; pageSize: number;
 };
 export type RadarPage = { items: RadarOpportunity[]; total: number; page: number; pageSize: number; hasMore: boolean; sort: RadarSort };
+import type { MatchFactor } from "../personalization/types";
+
 export type RadarOpportunity = {
   id: string; title: string; sponsor: string; summary: string; officialUrl: string; rulesUrl: string | null; startAt: string | null; endAt: string | null;
   timezone: string; estimatedPrizeValue: number | null; currency: string; entryFrequency: string; entryEffortScore: number; legitimacyScore: number;
@@ -14,6 +16,6 @@ export type RadarOpportunity = {
   eligibility: { minimumAge: number | null; maximumAge: number | null; countries: string[]; regions: string[]; excludedRegions: string[]; employeeExclusions: string | null; otherRestrictions: string | null } | null;
   entryMethods: Array<{ methodType: string; description: string; entryUrl: string; frequency: string; purchaseRequired: boolean; socialPlatform: string | null; estimatedMinutes: number | null }>;
   categories: string[]; qualityWarnings: Array<{ type: string; severity: string; details: unknown }>; sources: Array<{ name: string; attribution: string | null; lastSeenAt: string }>;
-  saved: boolean; userStatus: string | null; popularity: number; matchScore: number; eligibilityStatus: "eligible" | "ineligible" | "review";
+  saved: boolean; userStatus: string | null; popularity: number; matchScore: number; matchFactors: MatchFactor[]; eligibilityStatus: "eligible" | "ineligible" | "review";
 };
-export type RadarViewer = { userId: string; country: string | null; region: string | null; age: number | null; minimumPrize: number; maximumEffort: number; preferredCategories: string[]; allowSocial: boolean; allowPurchase: boolean };
+export type RadarViewer = { userId: string; country: string | null; region: string | null; age: number | null; minimumPrize: number; maximumEffort: number; preferredCategories: string[]; preferredFrequencies: string[]; allowSocial: boolean; allowPurchase: boolean };
