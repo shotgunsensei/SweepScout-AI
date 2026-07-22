@@ -55,6 +55,7 @@ import {
 } from "@/lib/scanner/admin";
 import { runQueuedDiscoveryEnrichment, undoAdministrativeMerge } from "@/lib/enrichment/admin";
 import { requireRequestAuth } from "@/lib/auth/session";
+import { parseRadarFilters, SupabaseRadarRepository } from "@/lib/radar";
 
 const router: IRouter = Router();
 
@@ -168,6 +169,26 @@ router.get("/config", handler(async (_req, res) => {
 router.get("/dashboard", handler(async (_req, res) => {
   const store = await getStore();
   ok(res, await store.getDashboardData());
+}));
+
+router.get("/radar", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new SupabaseRadarRepository().search(auth.userId, parseRadarFilters(req.query)));
+}));
+
+router.get("/opportunities/:id", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new SupabaseRadarRepository().detail(auth.userId, String(req.params.id)));
+}));
+
+router.put("/opportunities/:id/save", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new SupabaseRadarRepository().setSaved(auth.userId, String(req.params.id), req.body?.saved === true));
+}));
+
+router.put("/opportunities/:id/status", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await new SupabaseRadarRepository().setStatus(auth.userId, String(req.params.id), String(req.body?.status ?? "")));
 }));
 
 router.get("/tenant", handler(async (_req, res) => {

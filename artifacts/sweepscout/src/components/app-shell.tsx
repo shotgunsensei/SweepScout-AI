@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AppSidebar config={config} />
       <MobileNav config={config} />
       <CommandMenu />
-      <main className="mx-auto w-full max-w-[1540px] px-4 pb-24 pt-5 sm:px-6 lg:px-8 lg:py-7">{children}</main>
+      <main className="mx-auto min-w-0 w-full max-w-[1540px] px-4 pb-24 pt-5 sm:px-6 lg:px-8 lg:py-7">{children}</main>
       <TermsWarningModal />
       <Toaster
         theme="dark"

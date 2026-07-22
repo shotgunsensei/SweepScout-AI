@@ -1,151 +1,53 @@
-import { ExternalLink, ShieldAlert } from "lucide-react";
-import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { Bookmark, CheckCircle2, ExternalLink, EyeOff, FileWarning, Info, ListChecks, ShieldAlert, Sparkles, Trophy } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Link, useParams } from "wouter";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState, ErrorNotice, LoadingState, SectionHeader } from "@/components/dashboard-kit";
-import { Badge, DeadlineBadge, EligibilityBadge, PageHeader, Panel, PrizeCard, RiskBadge, StatusTimeline } from "@/components/ui";
-import { apiGet } from "@/lib/api";
+import { Badge, PageHeader, Panel } from "@/components/ui";
+import { apiGet, apiSend } from "@/lib/api";
 import { formatCurrency, formatDate, titleCase } from "@/lib/format";
-import { categoryLabel } from "@/lib/prize-categories";
-import type { EntryLog, Sweepstake } from "@/lib/types";
+import { timeRemaining } from "@/lib/radar";
+import type { OpportunityDetail } from "@/lib/types";
 
 export default function SweepstakesDetailPage() {
-  const params = useParams<{ id: string }>();
-  const id = params.id ?? "";
-  const sweepstake = useQuery({
-    queryKey: ["sweepstake", id],
-    queryFn: () => apiGet<Sweepstake>(`/sweepstakes/${id}`),
-    enabled: Boolean(id),
-  });
-  const entries = useQuery({ queryKey: ["entries"], queryFn: () => apiGet<EntryLog[]>("/entries") });
-
-  return (
-    <AppShell>
-      {sweepstake.isLoading ? <LoadingState title="Loading sweepstakes detail" /> : null}
-      {sweepstake.isError ? <ErrorNotice title="Unable to load sweepstakes" body="The API request failed. Confirm the API server is running." /> : null}
-      {sweepstake.data ? <DetailBody item={sweepstake.data} entries={(entries.data ?? []).filter((entry) => entry.sweepstakeId === sweepstake.data.id)} /> : null}
-    </AppShell>
-  );
+  const { id = "" } = useParams<{ id: string }>(); const queryClient = useQueryClient();
+  const detail = useQuery({ queryKey: ["opportunity", id], queryFn: () => apiGet<OpportunityDetail>(`/opportunities/${id}`), enabled: Boolean(id) });
+  const action = useMutation({ mutationFn: ({ kind, value }: { kind: "save" | "status"; value: string | boolean }) => kind === "save" ? apiSend(`/opportunities/${id}/save`, "PUT", { saved: value }) : apiSend(`/opportunities/${id}/status`, "PUT", { status: value }), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["opportunity", id] }); void queryClient.invalidateQueries({ queryKey: ["radar"] }); toast.success("Mission status updated"); }, onError: (error) => toast.error(error instanceof Error ? error.message : "Update failed") });
+  return <AppShell>{detail.isLoading ? <LoadingState title="Loading opportunity intelligence" /> : null}{detail.isError ? <ErrorNotice title="Opportunity unavailable" body="The normalized listing could not be loaded. It may have changed or been removed from active review." /> : null}{detail.data ? <OpportunityBody item={detail.data} busy={action.isPending} onSave={() => action.mutate({ kind: "save", value: !detail.data!.saved })} onStatus={(value) => action.mutate({ kind: "status", value })} /> : null}</AppShell>;
 }
 
-function DetailBody({ item, entries }: { item: Sweepstake; entries: EntryLog[] }) {
-  const timeline = [
-    { label: "Discovered", detail: formatDate(item.createdAt), tone: "default" as const },
-    { label: titleCase(item.status), detail: item.complianceNotes[0] ?? item.eligibilitySummary, tone: item.status === "eligible" ? "ok" as const : item.status === "suspicious" || item.status === "needs_review" ? "warn" as const : "default" as const },
-    ...(entries.length
-      ? entries.slice(0, 5).map((entry) => ({
-          label: titleCase(entry.status),
-          detail: `${formatDate(entry.attemptedAt)}${entry.notes ? ` - ${entry.notes}` : ""}`,
-          tone: entry.status === "submitted" ? "ok" as const : entry.status === "suspicious" ? "warn" as const : "default" as const,
-        }))
-      : []),
-  ];
+function OpportunityBody({ item, busy, onSave, onStatus }: { item: OpportunityDetail; busy: boolean; onSave: () => void; onStatus: (value: string) => void }) {
+  return <>
+    <Link href="/dashboard/sweepstakes" className="mb-4 inline-flex text-sm text-muted hover:text-accent">← Back to Opportunity Radar</Link>
+    <PageHeader title={item.title} kicker={item.sponsor} description="Sponsor-controlled opportunity details with Play Pack Pilot evidence, match, effort, and quality analysis.">
+      <Badge tone={item.eligibilityStatus === "eligible" ? "ok" : item.eligibilityStatus === "ineligible" ? "danger" : "warn"}>{titleCase(item.eligibilityStatus)}</Badge><Badge>{item.matchScore}% match</Badge><Badge tone={item.legitimacyScore >= 70 ? "ok" : "warn"}>Legitimacy {item.legitimacyScore}</Badge>
+    </PageHeader>
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,.8fr)]">
+      <div className="grid content-start gap-5">
+        <Panel className="border-reward/30 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,.12),transparent_38%),var(--panel)]">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div><p className="text-xs font-semibold uppercase tracking-wider text-reward">Primary prize</p><h2 className="mt-2 text-2xl font-bold">{item.primaryPrize ?? "Prize details require review"}</h2><p className="mt-2 text-4xl font-bold text-reward">{formatCurrency(item.estimatedPrizeValue)}</p></div>
+            <div className="rounded-lg border border-line bg-navigation/70 p-4 text-right"><p className="text-sm font-semibold text-foreground">{timeRemaining(item.endAt)}</p><p className="mt-1 text-xs text-muted">Ends {formatDate(item.endAt)} · {item.timezone}</p></div>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3"><a href={item.officialUrl} target="_blank" rel="noopener noreferrer external" referrerPolicy="no-referrer" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-reward px-5 text-sm font-bold text-[#111827]">Visit Official Sweepstakes <ExternalLink size={16} /></a>{item.rulesUrl ? <a href={item.rulesUrl} target="_blank" rel="noopener noreferrer external" referrerPolicy="no-referrer" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line px-4 text-sm hover:border-accent">Official rules <ExternalLink size={15} /></a> : <Badge tone="warn">Rules link unavailable</Badge>}</div>
+        </Panel>
 
-  return (
-    <>
-      <PageHeader
-        title={item.title}
-        kicker={item.sponsor}
-        description="Premium compliance detail view for prize value, eligibility, official rules, risk notes, and manual entry history."
-      >
-        <RiskBadge value={item.scamScore} />
-        <EligibilityBadge value={item.eligibilityScore} status={item.status} />
-        <DeadlineBadge value={item.endAt} />
-      </PageHeader>
-
-      <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-        <div className="grid content-start gap-5">
-          <PrizeCard item={item} />
-          <Panel>
-            <SectionHeader title="Entry Facts" eyebrow="Official-record summary" />
-            <div className="grid gap-3 text-sm">
-              <Fact label="Sponsor" value={item.sponsor} />
-              <Fact label="Category" value={categoryLabel(item.category)} />
-              <Fact label="Deadline" value={formatDate(item.endAt)} />
-              <Fact label="Entry frequency" value={item.entryFrequency || "Unknown"} />
-              <Fact label="Eligibility" value={item.eligibilitySummary || "Not captured"} />
-              <Fact label="Prize value" value={formatCurrency(item.prizeRetailValue)} />
-              <Fact label="Age" value={item.ageRequirement ? `${item.ageRequirement}+` : "Not captured"} />
-              <Fact label="States" value={item.stateEligibility.includes("ALL") ? "All eligible states" : item.stateEligibility.join(", ")} />
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {item.hasCaptcha ? <Badge tone="warn">CAPTCHA manual-only</Badge> : null}
-              {item.purchaseRequired ? <Badge tone="danger">Purchase/payment signal</Badge> : null}
-              {item.noPurchaseMethodFound ? <Badge tone="warn">No-purchase method missing</Badge> : <Badge tone="ok">No-purchase method ok</Badge>}
-              {item.requiresInPersonAppearance ? <Badge tone="warn">In-person requirement</Badge> : null}
-            </div>
-          </Panel>
-          <Panel>
-            <SectionHeader title="Entry Status Timeline" eyebrow="Manual history" />
-            <StatusTimeline items={timeline} />
-          </Panel>
-        </div>
-
-        <div className="grid content-start gap-5">
-          <Panel className="border-accent/25">
-            <SectionHeader title="AI Risk Score" eyebrow={`${item.scamScore}/100 risk | ${item.eligibilityScore}/100 eligibility`} />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <ScorePanel label="Risk" value={item.scamScore} dangerHigh />
-              <ScorePanel label="Eligibility" value={item.eligibilityScore} />
-            </div>
-            <div className="mt-4 grid gap-2">
-              {item.riskFlags.length ? (
-                item.riskFlags.map((flag) => (
-                  <div key={flag.code} className="flex items-start gap-2 rounded-md border border-line bg-panel-strong p-3 text-sm">
-                    <ShieldAlert className={flag.severity === "high" ? "mt-0.5 shrink-0 text-danger" : flag.severity === "medium" ? "mt-0.5 shrink-0 text-warning" : "mt-0.5 shrink-0 text-muted"} size={16} aria-hidden="true" />
-                    <span>
-                      <span className="block font-medium text-foreground">{flag.label}</span>
-                      <span className="text-xs text-muted">{titleCase(flag.severity)} severity</span>
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <EmptyState title="No active risk flags" body="Risk flags appear here after rules extraction, scoring, inbox review, or manual decisions." />
-              )}
-            </div>
-          </Panel>
-
-          <Panel>
-            <SectionHeader title="Compliance Notes" eyebrow="Decision basis" />
-            <div className="grid gap-2 text-sm leading-6 text-muted">
-              {item.complianceNotes.length ? item.complianceNotes.map((note) => <p key={note} className="rounded-md border border-line bg-panel-strong p-3">{note}</p>) : <p>No compliance notes captured.</p>}
-            </div>
-          </Panel>
-
-          <Panel>
-            <SectionHeader title="Official Rules" eyebrow={item.rulesUrl ? "Captured URL" : "Missing URL"} />
-            {item.rulesUrl ? (
-              <a href={item.rulesUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-accent">
-                Open official rules manually <ExternalLink size={15} aria-hidden="true" />
-              </a>
-            ) : (
-              <p className="text-sm text-warning">Official rules URL is not captured yet.</p>
-            )}
-            <p className="mt-4 max-h-80 overflow-y-auto rounded-md border border-line bg-panel-strong p-3 text-sm leading-6 text-muted">
-              {item.rulesText ?? item.extractedRules?.eligibility ?? item.extractedRules?.prizeSummary ?? "No official rules text has been stored yet."}
-            </p>
-          </Panel>
-        </div>
+        <Panel><SectionHeader title="AI-assisted summary" eyebrow="Verify every fact against sponsor rules" /><p className="text-sm leading-7 text-foreground/90">{item.summary || "A supported summary has not been extracted yet."}</p></Panel>
+        <Panel><SectionHeader title="Prize manifest" eyebrow={`${item.prizes.length} structured prize records`} />{item.prizes.length ? <div className="grid gap-3 sm:grid-cols-2">{item.prizes.map((prize, index) => <div key={`${prize.name}-${index}`} className="rounded-lg border border-line bg-panel-strong p-4"><Trophy size={17} className="text-reward" /><p className="mt-2 font-semibold">{prize.name}</p><p className="mt-1 text-sm text-muted">Quantity {prize.quantity} · {formatCurrency(prize.estimatedValue)}</p>{prize.description ? <p className="mt-2 text-sm leading-6 text-muted">{prize.description}</p> : null}</div>)}</div> : <EmptyState title="Prize manifest pending" body="Prize values remain unverified until source evidence supports them." />}</Panel>
+        <Panel><SectionHeader title="Eligibility and restrictions" eyebrow="Profile-aware display" /><div className="grid gap-3 sm:grid-cols-2"><Fact label="Minimum age" value={item.eligibility?.minimumAge !== null && item.eligibility?.minimumAge !== undefined ? `${item.eligibility.minimumAge}+` : "Not confirmed"} /><Fact label="Eligible countries" value={item.eligibility?.countries.join(", ") || "Not confirmed"} /><Fact label="Eligible regions" value={item.eligibility?.regions.join(", ") || "Not specified"} /><Fact label="Employee exclusions" value={item.eligibility?.employeeExclusions || "Not confirmed"} /></div>{item.eligibility?.otherRestrictions ? <p className="mt-3 rounded-md border border-line bg-panel-strong p-3 text-sm leading-6 text-muted">{item.eligibility.otherRestrictions}</p> : null}</Panel>
+        <Panel><SectionHeader title="Entry checklist" eyebrow={titleCase(item.entryFrequency)} />{item.entryMethods.length ? <div className="grid gap-3">{item.entryMethods.map((method, index) => <div key={`${method.methodType}-${index}`} className="flex items-start gap-3 rounded-lg border border-line bg-panel-strong p-4"><CheckCircle2 size={18} className="mt-0.5 shrink-0 text-accent" /><div><p className="font-semibold">{titleCase(method.methodType)}</p><p className="mt-1 text-sm leading-6 text-muted">{method.description || "Follow the sponsor's entry instructions."}</p><div className="mt-2 flex flex-wrap gap-2"><Badge>{titleCase(method.frequency)}</Badge>{method.estimatedMinutes !== null ? <Badge>{method.estimatedMinutes} min</Badge> : null}{method.socialPlatform ? <Badge tone="warn">{method.socialPlatform}</Badge> : null}{method.purchaseRequired ? <Badge tone="danger">Purchase-related</Badge> : null}</div></div></div>)}</div> : <EmptyState title="Entry method pending" body="Open the official sponsor page and verify entry requirements before proceeding." action={<ListChecks className="text-accent" />} />}</Panel>
       </div>
-    </>
-  );
-}
 
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-line bg-panel-strong p-3">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
+      <div className="grid content-start gap-5">
+        <Panel><SectionHeader title="Mission controls" eyebrow={item.userStatus ? titleCase(item.userStatus) : "No status"} /><div className="grid grid-cols-2 gap-2"><button disabled={busy} onClick={onSave} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-accent-strong px-3 text-sm font-semibold disabled:opacity-50"><Bookmark size={16} fill={item.saved ? "currentColor" : "none"} />{item.saved ? "Unsave" : "Save"}</button><button disabled={busy} onClick={() => onStatus("hidden")} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-line px-3 text-sm disabled:opacity-50"><EyeOff size={16} />Hide</button>{["interested", "entered", "enter_again", "skipped", "won"].map((status) => <button key={status} disabled={busy} onClick={() => onStatus(status)} className={`min-h-10 rounded-md border px-2 text-xs font-semibold ${item.userStatus === status ? "border-accent bg-accent/15 text-accent" : "border-line text-muted"}`}>{titleCase(status)}</button>)}</div></Panel>
+        <Panel><SectionHeader title="Quality telemetry" eyebrow="Decision support, not certification" /><div className="grid grid-cols-3 gap-2"><Score label="Match" value={item.matchScore} /><Score label="Effort" value={item.entryEffortScore} invert /><Score label="Source" value={item.sourceConfidenceScore} /></div>{item.qualityWarnings.length ? <div className="mt-4 grid gap-2">{item.qualityWarnings.map((warning, index) => <div key={`${warning.type}-${index}`} className="flex gap-2 rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning"><ShieldAlert size={16} className="mt-0.5 shrink-0" /><span>{titleCase(warning.type)} · {titleCase(warning.severity)}</span></div>)}</div> : <p className="mt-4 text-sm text-muted">No open quality warnings. Continue to verify official rules.</p>}</Panel>
+        <Panel><SectionHeader title="Source attribution" eyebrow={`Last verified ${formatDate(item.lastVerifiedAt)}`} />{item.sources.length ? <div className="grid gap-2">{item.sources.map((source, index) => <div key={`${source.name}-${index}`} className="rounded-md border border-line bg-panel-strong p-3"><p className="text-sm font-semibold">{source.attribution || source.name}</p><p className="mt-1 text-xs text-muted">Seen {formatDate(source.lastSeenAt)}</p></div>)}</div> : <p className="text-sm text-muted">Attribution is pending source verification.</p>}</Panel>
+        <Panel className="border-warning/30"><SectionHeader title="Before you enter" eyebrow="Safety notice" /><div className="grid gap-2">{item.safety.map((message) => <p key={message} className="flex items-start gap-2 text-sm leading-6 text-muted"><Info size={15} className="mt-1 shrink-0 text-warning" />{message}</p>)}</div></Panel>
+        <Panel><SectionHeader title="Evidence trail" eyebrow={`${item.evidence.length} extracted field records`} /><div className="max-h-96 space-y-2 overflow-y-auto pr-1">{item.evidence.slice(0, 20).map((evidence, index) => <details key={`${evidence.field_name}-${index}`} className="rounded-md border border-line bg-panel-strong"><summary className="cursor-pointer px-3 py-2 text-sm font-semibold"><span className="inline-flex items-center gap-2"><FileWarning size={14} className={evidence.authoritative ? "text-ok" : "text-warning"} />{titleCase(evidence.field_name)} · {Math.round(Number(evidence.confidence) * 100)}%</span></summary><div className="border-t border-line px-3 py-3 text-xs leading-5 text-muted"><p>{evidence.evidence_text || "No supporting excerpt stored."}</p><p className="mt-2 text-accent">{evidence.source_reference}</p></div></details>)}</div></Panel>
+      </div>
     </div>
-  );
+  </>;
 }
-
-function ScorePanel({ label, value, dangerHigh = false }: { label: string; value: number; dangerHigh?: boolean }) {
-  const tone = dangerHigh ? (value >= 60 ? "text-danger" : value >= 40 ? "text-warning" : "text-ok") : value >= 75 ? "text-ok" : value >= 50 ? "text-warning" : "text-danger";
-  return (
-    <div className="rounded-lg border border-line bg-panel-strong p-4">
-      <p className="text-sm text-muted">{label}</p>
-      <p className={`mt-2 text-4xl font-semibold ${tone}`}>{value}</p>
-    </div>
-  );
-}
+function Fact({ label, value }: { label: string; value: string }) { return <div className="rounded-md border border-line bg-panel-strong p-3"><p className="text-xs text-muted">{label}</p><p className="mt-1 text-sm font-semibold leading-6">{value}</p></div>; }
+function Score({ label, value, invert = false }: { label: string; value: number; invert?: boolean }) { const good = invert ? value <= 40 : value >= 70; return <div className="rounded-md border border-line bg-panel-strong p-3 text-center"><Sparkles size={14} className="mx-auto text-accent" /><p className={`mt-1 text-xl font-bold ${good ? "text-ok" : "text-warning"}`}>{value}</p><p className="text-[10px] uppercase text-muted">{label}</p></div>; }
