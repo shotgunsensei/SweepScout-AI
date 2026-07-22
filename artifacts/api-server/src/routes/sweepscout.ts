@@ -11,7 +11,8 @@ import { assertNoForbiddenVaultFields, assertNoForbiddenVaultValues } from "@/li
 import { approveAssistantTask, recordEntryAttempt } from "@/lib/services/assistant";
 import { answerSweepScoutAssistant } from "@/lib/services/assistant-insights";
 import { analyzeExtensionPage, saveExtensionPage } from "@/lib/services/browser-extension";
-import { createStripeCheckoutSession, handleStripeWebhook } from "@/lib/services/billing";
+import { billingSummary, changeStripeSubscription, createStripeCheckoutSession, createStripePortalSession, handleStripeWebhook, setStripeCancellation, withPilotCredits } from "@/lib/services/billing";
+import type { CreditOperation } from "@/lib/billing";
 import { normalizeCategoryPreferences } from "@/lib/services/category-classifier";
 import {
   complianceReportToCsv,
@@ -81,6 +82,25 @@ function clientKey(req: Request) {
 
 function bool(value: unknown) {
   return value === true || value === "on" || value === "true";
+}
+
+function creditIdempotencyKey(req: Request, operation: CreditOperation, source: string) {
+  const supplied = typeof req.headers["idempotency-key"] === "string" ? req.headers["idempotency-key"].trim() : "";
+  const token = (supplied || randomUUID()).replace(/[^a-zA-Z0-9._:-]/g, "-").slice(0, 160);
+  return `action:${requireRequestAuth(req).userId}:${operation}:${source.slice(0, 80)}:${token}`;
+}
+
+function assistantCreditOperation(intent: unknown): CreditOperation {
+  if (intent === "rules_summary") return "rules_summary";
+  if (intent === "can_i_enter") return "basic_eligibility";
+  if (intent === "manual_checklist") return "entry_checklist";
+  if (intent === "risk_explanation") return "deep_legitimacy";
+  return "personalized_report";
+}
+
+async function meteredAction<T extends Record<string, unknown>>(req: Request, operation: CreditOperation, source: string, execute: () => Promise<T>) {
+  const metered = await withPilotCredits({ userId: requireRequestAuth(req).userId, operation, sourceReference: source, idempotencyKey: creditIdempotencyKey(req, operation, source), execute });
+  return { ...metered.value, creditUsage: { cost: metered.cost, balance: metered.balance } };
 }
 
 async function rescoreSweepstakeById(sweepstakeId: string) {
@@ -155,7 +175,8 @@ router.get("/admin/discovered-urls", handler(async (req, res) => {
 
 router.post("/admin/discovered-urls/:id/enrich", handler(async (req, res) => {
   await requireAdmin(req);
-  ok(res, await runQueuedDiscoveryEnrichment(String(req.params.id)), 202);
+  const id=String(req.params.id);
+  ok(res, await meteredAction(req,"promotion_deep_analysis",id,()=>runQueuedDiscoveryEnrichment(id)), 202);
 }));
 
 router.post("/admin/merges/:id/undo", handler(async (req, res) => {
@@ -414,8 +435,8 @@ router.post("/extension/analyze", handler(async (req, res) => {
   ok(res, await analyzeExtensionPage(req.body));
 }));
 
-router.get("/billing/summary", handler(async (_req, res) => {
-  ok(res, await getSaaSAdminSummary());
+router.get("/billing/summary", handler(async (req, res) => {
+  ok(res, await billingSummary(requireRequestAuth(req).userId));
 }));
 
 router.get("/admin", handler(async (req, res) => {
@@ -511,14 +532,13 @@ router.post("/imports/csv", handler(async (req, res) => {
     fail(res, "CSV import is rate limited. Try again shortly.", 429);
     return;
   }
-  ok(
-    res,
-    await runImport({
+  const extractRules=req.body?.extractRules===undefined?true:bool(req.body.extractRules);
+  const execute=()=>runImport({
       source: "csv",
       csvText: String(req.body?.csvText ?? ""),
-      extractRules: req.body?.extractRules === undefined ? true : bool(req.body.extractRules),
-    }),
-  );
+      extractRules,
+    });
+  ok(res,extractRules?await meteredAction(req,"large_source_scan","csv-import",execute):await execute());
 }));
 
 router.post("/imports/urls", handler(async (req, res) => {
@@ -527,14 +547,13 @@ router.post("/imports/urls", handler(async (req, res) => {
     fail(res, "URL import is rate limited. Try again shortly.", 429);
     return;
   }
-  ok(
-    res,
-    await runImport({
+  const extractRules=req.body?.extractRules===undefined?true:bool(req.body.extractRules);
+  const execute=()=>runImport({
       source: "url_list",
       urlsText: String(req.body?.urlsText ?? ""),
-      extractRules: req.body?.extractRules === undefined ? true : bool(req.body.extractRules),
-    }),
-  );
+      extractRules,
+    });
+  ok(res,extractRules?await meteredAction(req,"large_source_scan","url-import",execute):await execute());
 }));
 
 router.post("/imports/bookmarks", handler(async (req, res) => {
@@ -543,14 +562,13 @@ router.post("/imports/bookmarks", handler(async (req, res) => {
     fail(res, "Bookmark import is rate limited. Try again shortly.", 429);
     return;
   }
-  ok(
-    res,
-    await runImport({
+  const extractRules=req.body?.extractRules===undefined?true:bool(req.body.extractRules);
+  const execute=()=>runImport({
       source: "bookmarks",
       bookmarkHtml: String(req.body?.bookmarkHtml ?? ""),
-      extractRules: req.body?.extractRules === undefined ? true : bool(req.body.extractRules),
-    }),
-  );
+      extractRules,
+    });
+  ok(res,extractRules?await meteredAction(req,"large_source_scan","bookmark-import",execute):await execute());
 }));
 
 router.post("/imports/manual", handler(async (req, res) => {
@@ -559,9 +577,8 @@ router.post("/imports/manual", handler(async (req, res) => {
     fail(res, "Manual import is rate limited. Try again shortly.", 429);
     return;
   }
-  ok(
-    res,
-    await runImport({
+  const extractRules=req.body?.extractRules===undefined?true:bool(req.body.extractRules);
+  const execute=()=>runImport({
       source: "manual",
       manual: {
         url: String(req.body?.url ?? ""),
@@ -571,9 +588,9 @@ router.post("/imports/manual", handler(async (req, res) => {
         formUrl: String(req.body?.formUrl ?? ""),
         text: String(req.body?.notes ?? ""),
       },
-      extractRules: req.body?.extractRules === undefined ? true : bool(req.body.extractRules),
-    }),
-  );
+      extractRules,
+    });
+  ok(res,extractRules?await meteredAction(req,"official_rules_extraction",String(req.body?.url??"manual-import"),execute):await execute());
 }));
 
 router.post("/imports/text", handler(async (req, res) => {
@@ -582,9 +599,8 @@ router.post("/imports/text", handler(async (req, res) => {
     fail(res, "Text import is rate limited. Try again shortly.", 429);
     return;
   }
-  ok(
-    res,
-    await runImport({
+  const extractRules=req.body?.extractRules===undefined?false:bool(req.body.extractRules);
+  const execute=()=>runImport({
       source: "text",
       text: {
         url: String(req.body?.url ?? ""),
@@ -594,22 +610,23 @@ router.post("/imports/text", handler(async (req, res) => {
         formUrl: String(req.body?.formUrl ?? ""),
         text: String(req.body?.manualText ?? req.body?.text ?? ""),
       },
-      extractRules: req.body?.extractRules === undefined ? false : bool(req.body.extractRules),
-    }),
-  );
+      extractRules,
+    });
+  ok(res,extractRules?await meteredAction(req,"official_rules_extraction",String(req.body?.url??"text-import"),execute):await execute());
 }));
 
 router.post("/extraction/run", handler(async (req, res) => {
-  await assertFeatureAllowed("scoring");
+  const auth = requireRequestAuth(req);
   const sweepstakeId = String(req.body?.sweepstakeId ?? "");
-  const job = await runRulesExtraction(sweepstakeId);
-  ok(res, job);
+  const metered = await withPilotCredits({ userId: auth.userId, operation: "official_rules_extraction", sourceReference: sweepstakeId, idempotencyKey: creditIdempotencyKey(req, "official_rules_extraction", sweepstakeId), execute: () => runRulesExtraction(sweepstakeId) });
+  ok(res, { ...metered.value, creditUsage: { cost: metered.cost, balance: metered.balance } });
 }));
 
 router.post("/scoring/rescore", handler(async (req, res) => {
-  await assertFeatureAllowed("scoring");
-  const updated = await rescoreSweepstakeById(String(req.body?.sweepstakeId ?? ""));
-  ok(res, updated);
+  const auth = requireRequestAuth(req);
+  const sweepstakeId = String(req.body?.sweepstakeId ?? "");
+  const metered = await withPilotCredits({ userId: auth.userId, operation: "personalized_fit", sourceReference: sweepstakeId, idempotencyKey: creditIdempotencyKey(req, "personalized_fit", sweepstakeId), execute: () => rescoreSweepstakeById(sweepstakeId) });
+  ok(res, { ...metered.value, creditUsage: { cost: metered.cost, balance: metered.balance } });
 }));
 
 router.post("/assistant/ask", handler(async (req, res) => {
@@ -618,7 +635,11 @@ router.post("/assistant/ask", handler(async (req, res) => {
     fail(res, "AI assistant is rate limited. Try again shortly.", 429);
     return;
   }
-  ok(res, await answerSweepScoutAssistant(req.body));
+  const auth = requireRequestAuth(req);
+  const source = String(req.body?.sweepstakeId ?? req.body?.intent ?? "assistant");
+  const operation = assistantCreditOperation(req.body?.intent);
+  const metered = await withPilotCredits({ userId: auth.userId, operation, sourceReference: source, idempotencyKey: creditIdempotencyKey(req, operation, source), execute: () => answerSweepScoutAssistant(req.body) });
+  ok(res, { ...metered.value, creditUsage: { cost: metered.cost, balance: metered.balance } });
 }));
 
 router.post("/assistant/approve", handler(async (req, res) => {
@@ -658,13 +679,13 @@ router.post("/forms/prefill", handler(async (req, res) => {
     fail(res, "Prefill is rate limited. Try again shortly.", 429);
     return;
   }
-  const result = await runAssistedFormPrefill({
+  const execute = () => runAssistedFormPrefill({
     sweepstakeId: String(req.body?.sweepstakeId ?? ""),
     formUrl: String(req.body?.formUrl ?? "") || undefined,
     userApproved: bool(req.body?.prefillApproved ?? req.body?.userApproved),
     useAiFallback: bool(req.body?.useAiFallback),
   });
-  ok(res, result);
+  ok(res, bool(req.body?.useAiFallback) ? await meteredAction(req, "entry_checklist", String(req.body?.sweepstakeId ?? "prefill"), execute) : await execute());
 }));
 
 router.post("/extension/save", handler(async (req, res) => {
@@ -736,14 +757,25 @@ router.post("/rules-monitor/check", handler(async (req, res) => {
 }));
 
 router.post("/billing/checkout", handler(async (req, res) => {
-  const origin = String(req.body?.origin ?? req.headers.origin ?? "http://localhost:5173");
-  ok(
-    res,
-    await createStripeCheckoutSession({
-      tier: String(req.body?.tier ?? "") as "free" | "pro" | "power",
-      origin,
-    }),
-  );
+  const auth = requireRequestAuth(req);
+  ok(res, await createStripeCheckoutSession(auth.userId, { planKey: String(req.body?.planKey ?? "") as any, interval: req.body?.interval === "year" ? "year" : "month" }));
+}));
+
+router.post("/billing/portal", handler(async (req, res) => {
+  ok(res, await createStripePortalSession(requireRequestAuth(req).userId));
+}));
+
+router.post("/billing/subscription/change", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await changeStripeSubscription(auth.userId, { planKey: String(req.body?.planKey ?? "") as any, interval: req.body?.interval === "year" ? "year" : "month" }));
+}));
+
+router.post("/billing/subscription/cancel", handler(async (req, res) => {
+  ok(res, await setStripeCancellation(requireRequestAuth(req).userId, true));
+}));
+
+router.post("/billing/subscription/resume", handler(async (req, res) => {
+  ok(res, await setStripeCancellation(requireRequestAuth(req).userId, false));
 }));
 
 router.post("/billing/webhook", handler(async (req, res) => {
@@ -754,11 +786,7 @@ router.post("/billing/webhook", handler(async (req, res) => {
   }
   ok(
     res,
-    await handleStripeWebhook({
-      rawBody,
-      signature: req.headers["stripe-signature"] as string | undefined,
-      event: req.body,
-    }),
+    await handleStripeWebhook(rawBody, req.headers["stripe-signature"] as string | undefined),
   );
 }));
 
@@ -896,14 +924,14 @@ router.put("/settings", handler(async (req, res) => {
 
 router.post("/admin/retry-extraction", handler(async (req, res) => {
   await requireAdmin(req);
-  const job = await runRulesExtraction(String(req.body?.sweepstakeId ?? ""));
-  ok(res, job);
+  const id=String(req.body?.sweepstakeId??"");
+  ok(res,await meteredAction(req,"official_rules_extraction",id,()=>runRulesExtraction(id)));
 }));
 
 router.post("/admin/rescore", handler(async (req, res) => {
   await requireAdmin(req);
-  const updated = await rescoreSweepstakeById(String(req.body?.sweepstakeId ?? ""));
-  ok(res, updated);
+  const id=String(req.body?.sweepstakeId??"");
+  ok(res,await meteredAction(req,"personalized_fit",id,()=>rescoreSweepstakeById(id)));
 }));
 
 router.post("/admin/block-domain", handler(async (req, res) => {

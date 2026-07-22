@@ -21,6 +21,7 @@ async function buildAll() {
       enrichment: path.resolve(artifactDir, "src/domain/enrichment/index.ts"),
       radar: path.resolve(artifactDir, "src/domain/radar/index.ts"),
       personalization: path.resolve(artifactDir, "src/domain/personalization/index.ts"),
+      billing: path.resolve(artifactDir, "src/domain/billing/index.ts"),
     },
     platform: "node",
     bundle: true,

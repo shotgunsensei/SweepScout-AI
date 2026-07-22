@@ -17,6 +17,8 @@ import ScoringPage from "@/pages/scoring";
 import ExtractionPage from "@/pages/extraction";
 import SettingsPage from "@/pages/settings";
 import AdminPage from "@/pages/admin";
+import BillingPage from "@/pages/billing";
+import PricingPage from "@/pages/pricing";
 import NotFound from "@/pages/not-found";
 import OnboardingPage from "@/pages/onboarding";
 import { AuthCallbackPage, ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage } from "@/pages/auth";
@@ -38,6 +40,7 @@ function Router() {
 
       <Route path="/login" component={LoginPage} />
       <Route path="/signup" component={SignupPage} />
+      <Route path="/pricing" component={PricingPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/auth/callback" component={AuthCallbackPage} />
@@ -60,7 +63,7 @@ function Router() {
       <Route path="/dashboard/roi">{() => <ProtectedRoute><RoiPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/reports">{() => <ProtectedRoute><ReportsPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/settings">{() => <ProtectedRoute><SettingsPage /></ProtectedRoute>}</Route>
-      <Route path="/dashboard/billing">{() => <ProtectedRoute><AdminPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/billing">{() => <ProtectedRoute><BillingPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/admin">{() => <ProtectedRoute><AdminPage /></ProtectedRoute>}</Route>
 
       <Route path="/scoring">{() => <ProtectedRoute><ScoringPage /></ProtectedRoute>}</Route>
