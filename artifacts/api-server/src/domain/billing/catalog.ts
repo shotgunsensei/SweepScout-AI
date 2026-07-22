@@ -1,0 +1,22 @@
+import { AppConfigError } from "@/lib/env";
+import type { BillingInterval, CatalogPlan, CreditOperation, PlanKey } from "./types";
+
+export function planCatalog(): Record<PlanKey, CatalogPlan> {
+  return {
+    free_flight: plan("free_flight", "Free Flight", 0, null, 10, "A safe starting radar with weekly updates.", { full_feed: false, saved_items: 10, digest_daily: false, digest_weekly: true, standard_reminders: false, deep_ai: false, priority_alerts: false, custom_scans: 0, household_profiles: 1, reports: false, priority_processing: false }, null, null),
+    co_pilot: plan("co_pilot", "Co-Pilot", 799, 7900, 200, "Full discovery and dependable daily planning.", { full_feed: true, saved_items: -1, digest_daily: true, digest_weekly: true, standard_reminders: true, deep_ai: false, priority_alerts: false, custom_scans: 0, household_profiles: 1, reports: false, priority_processing: false }, env("STRIPE_PRICE_COPILOT_MONTHLY"), env("STRIPE_PRICE_COPILOT_ANNUAL")),
+    ace_pilot: plan("ace_pilot", "Ace Pilot", 1499, 14900, 750, "Advanced analysis, scoring, alerts, and custom scans.", { full_feed: true, saved_items: -1, digest_daily: true, digest_weekly: true, standard_reminders: true, deep_ai: true, priority_alerts: true, custom_scans: 25, household_profiles: 1, reports: false, priority_processing: false }, env("STRIPE_PRICE_ACE_PILOT_MONTHLY"), env("STRIPE_PRICE_ACE_PILOT_ANNUAL")),
+    squadron: plan("squadron", "Squadron", 2999, 29900, 2000, "Household collaboration, reporting, and higher processing limits.", { full_feed: true, saved_items: -1, digest_daily: true, digest_weekly: true, standard_reminders: true, deep_ai: true, priority_alerts: true, custom_scans: 100, household_profiles: 6, reports: true, priority_processing: true }, env("STRIPE_PRICE_SQUADRON_MONTHLY"), env("STRIPE_PRICE_SQUADRON_ANNUAL")),
+  };
+}
+
+export function publicCatalog() { return Object.values(planCatalog()).map(({ prices, ...plan }) => ({ ...plan, priceConfigured: { month: plan.key === "free_flight" || Boolean(prices.month), year: plan.key === "free_flight" || Boolean(prices.year) } })); }
+export function getPlan(key: unknown) { const value = String(key ?? "") as PlanKey; const found = planCatalog()[value]; if (!found) throw new AppConfigError("Unknown subscription plan."); return found; }
+export function getPrice(planKey: unknown, intervalInput: unknown) { const selected = getPlan(planKey); if (selected.key === "free_flight") throw new AppConfigError("Free Flight does not require Stripe Checkout."); const interval = intervalInput === "year" ? "year" : "month"; const priceId = selected.prices[interval]; if (!priceId) throw new AppConfigError(`${selected.name} ${interval} billing is not configured.`); return { plan: selected, interval: interval as BillingInterval, priceId }; }
+export function planForPrice(priceId: unknown) { const value=String(priceId??""); for(const plan of Object.values(planCatalog())) for(const interval of ["month","year"] as const) if(plan.prices[interval]===value)return {plan,interval}; throw new AppConfigError("Stripe event referenced an unrecognized Price ID."); }
+
+export function creditCosts(): Record<CreditOperation, number> { return { basic_eligibility: cost("PILOT_CREDIT_COST_BASIC_ELIGIBILITY",1), personalized_fit: cost("PILOT_CREDIT_COST_PERSONALIZED_FIT",1), rules_summary: cost("PILOT_CREDIT_COST_RULES_SUMMARY",2), entry_checklist: cost("PILOT_CREDIT_COST_ENTRY_CHECKLIST",2), deep_legitimacy: cost("PILOT_CREDIT_COST_DEEP_LEGITIMACY",3), official_rules_extraction: cost("PILOT_CREDIT_COST_OFFICIAL_RULES_EXTRACTION",3), promotion_deep_analysis: cost("PILOT_CREDIT_COST_PROMOTION_DEEP_ANALYSIS",3), personalized_report: cost("PILOT_CREDIT_COST_PERSONALIZED_REPORT",5), custom_scan: cost("PILOT_CREDIT_COST_CUSTOM_SCAN",10), large_source_scan: cost("PILOT_CREDIT_COST_LARGE_SOURCE_SCAN",20) }; }
+export function operationCost(operation: CreditOperation) { return creditCosts()[operation]; }
+function plan(key: PlanKey,name:string,monthlyPriceCents:number,annualPriceCents:number|null,monthlyCredits:number,description:string,features:Record<string,number|boolean>,month:string|null,year:string|null):CatalogPlan { return { key,name,monthlyPriceCents,annualPriceCents,monthlyCredits,description,features,prices:{month,year} }; }
+function env(name: string) { return process.env[name]?.trim() || null; }
+function cost(name: string, fallback: number) { const parsed=Number(process.env[name]); return Number.isInteger(parsed)&&parsed>0?parsed:fallback; }

@@ -1,0 +1,6 @@
+import { creditCosts, getPlan, publicCatalog } from "./catalog";
+import { ensureFreeMonthlyGrant } from "./credits";
+import { BillingRepository } from "./repository";
+
+export async function billingSummary(userId:string,repo=new BillingRepository()){const subscription=await repo.subscription(userId);if(subscription.planKey==="free_flight"&&(subscription.status==="none"||subscription.status==="canceled"))await ensureFreeMonthlyGrant(userId,repo);let entitlements=await repo.entitlements(userId);if(!entitlements.length){await repo.replaceEntitlements(userId,"free_flight","free_policy",null);entitlements=await repo.entitlements(userId);}const [credits,history]=await Promise.all([repo.ledger(userId),repo.history(userId)]);const plan=getPlan(subscription.planKey);return{catalog:publicCatalog(),creditCosts:creditCosts(),subscription,plan:{...plan,prices:undefined},entitlements,credits,billingHistory:history,stripe:{testMode:true,configured:Boolean(process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")),portalAvailable:Boolean(await repo.customer(userId))},paymentFailed:subscription.status==="past_due"||subscription.status==="unpaid",gracePeriodDays:bounded(process.env.BILLING_GRACE_PERIOD_DAYS,3)};}
+function bounded(value:unknown,fallback:number){const n=Number(value);return Number.isInteger(n)&&n>=0&&n<=30?n:fallback;}

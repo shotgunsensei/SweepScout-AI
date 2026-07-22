@@ -11,7 +11,8 @@ import { assertNoForbiddenVaultFields, assertNoForbiddenVaultValues } from "@/li
 import { approveAssistantTask, recordEntryAttempt } from "@/lib/services/assistant";
 import { answerSweepScoutAssistant } from "@/lib/services/assistant-insights";
 import { analyzeExtensionPage, saveExtensionPage } from "@/lib/services/browser-extension";
-import { createStripeCheckoutSession, handleStripeWebhook } from "@/lib/services/billing";
+import { billingSummary, changeStripeSubscription, createStripeCheckoutSession, createStripePortalSession, handleStripeWebhook, setStripeCancellation, withPilotCredits } from "@/lib/services/billing";
+import type { CreditOperation } from "@/lib/billing";
 import { normalizeCategoryPreferences } from "@/lib/services/category-classifier";
 import {
   complianceReportToCsv,
@@ -81,6 +82,12 @@ function clientKey(req: Request) {
 
 function bool(value: unknown) {
   return value === true || value === "on" || value === "true";
+}
+
+function creditIdempotencyKey(req: Request, operation: CreditOperation, source: string) {
+  const supplied = typeof req.headers["idempotency-key"] === "string" ? req.headers["idempotency-key"].trim() : "";
+  const token = (supplied || randomUUID()).replace(/[^a-zA-Z0-9._:-]/g, "-").slice(0, 160);
+  return `action:${requireRequestAuth(req).userId}:${operation}:${source.slice(0, 80)}:${token}`;
 }
 
 async function rescoreSweepstakeById(sweepstakeId: string) {
@@ -414,8 +421,8 @@ router.post("/extension/analyze", handler(async (req, res) => {
   ok(res, await analyzeExtensionPage(req.body));
 }));
 
-router.get("/billing/summary", handler(async (_req, res) => {
-  ok(res, await getSaaSAdminSummary());
+router.get("/billing/summary", handler(async (req, res) => {
+  ok(res, await billingSummary(requireRequestAuth(req).userId));
 }));
 
 router.get("/admin", handler(async (req, res) => {
@@ -601,15 +608,18 @@ router.post("/imports/text", handler(async (req, res) => {
 
 router.post("/extraction/run", handler(async (req, res) => {
   await assertFeatureAllowed("scoring");
+  const auth = requireRequestAuth(req);
   const sweepstakeId = String(req.body?.sweepstakeId ?? "");
-  const job = await runRulesExtraction(sweepstakeId);
-  ok(res, job);
+  const metered = await withPilotCredits({ userId: auth.userId, operation: "official_rules_extraction", sourceReference: sweepstakeId, idempotencyKey: creditIdempotencyKey(req, "official_rules_extraction", sweepstakeId), execute: () => runRulesExtraction(sweepstakeId) });
+  ok(res, { ...metered.value, creditUsage: { cost: metered.cost, balance: metered.balance } });
 }));
 
 router.post("/scoring/rescore", handler(async (req, res) => {
   await assertFeatureAllowed("scoring");
-  const updated = await rescoreSweepstakeById(String(req.body?.sweepstakeId ?? ""));
-  ok(res, updated);
+  const auth = requireRequestAuth(req);
+  const sweepstakeId = String(req.body?.sweepstakeId ?? "");
+  const metered = await withPilotCredits({ userId: auth.userId, operation: "personalized_fit", sourceReference: sweepstakeId, idempotencyKey: creditIdempotencyKey(req, "personalized_fit", sweepstakeId), execute: () => rescoreSweepstakeById(sweepstakeId) });
+  ok(res, { ...metered.value, creditUsage: { cost: metered.cost, balance: metered.balance } });
 }));
 
 router.post("/assistant/ask", handler(async (req, res) => {
@@ -618,7 +628,10 @@ router.post("/assistant/ask", handler(async (req, res) => {
     fail(res, "AI assistant is rate limited. Try again shortly.", 429);
     return;
   }
-  ok(res, await answerSweepScoutAssistant(req.body));
+  const auth = requireRequestAuth(req);
+  const source = String(req.body?.sweepstakeId ?? req.body?.intent ?? "assistant");
+  const metered = await withPilotCredits({ userId: auth.userId, operation: "personalized_report", sourceReference: source, idempotencyKey: creditIdempotencyKey(req, "personalized_report", source), execute: () => answerSweepScoutAssistant(req.body) });
+  ok(res, { ...metered.value, creditUsage: { cost: metered.cost, balance: metered.balance } });
 }));
 
 router.post("/assistant/approve", handler(async (req, res) => {
@@ -736,14 +749,25 @@ router.post("/rules-monitor/check", handler(async (req, res) => {
 }));
 
 router.post("/billing/checkout", handler(async (req, res) => {
-  const origin = String(req.body?.origin ?? req.headers.origin ?? "http://localhost:5173");
-  ok(
-    res,
-    await createStripeCheckoutSession({
-      tier: String(req.body?.tier ?? "") as "free" | "pro" | "power",
-      origin,
-    }),
-  );
+  const auth = requireRequestAuth(req);
+  ok(res, await createStripeCheckoutSession(auth.userId, { planKey: String(req.body?.planKey ?? "") as any, interval: req.body?.interval === "year" ? "year" : "month" }));
+}));
+
+router.post("/billing/portal", handler(async (req, res) => {
+  ok(res, await createStripePortalSession(requireRequestAuth(req).userId));
+}));
+
+router.post("/billing/subscription/change", handler(async (req, res) => {
+  const auth = requireRequestAuth(req);
+  ok(res, await changeStripeSubscription(auth.userId, { planKey: String(req.body?.planKey ?? "") as any, interval: req.body?.interval === "year" ? "year" : "month" }));
+}));
+
+router.post("/billing/subscription/cancel", handler(async (req, res) => {
+  ok(res, await setStripeCancellation(requireRequestAuth(req).userId, true));
+}));
+
+router.post("/billing/subscription/resume", handler(async (req, res) => {
+  ok(res, await setStripeCancellation(requireRequestAuth(req).userId, false));
 }));
 
 router.post("/billing/webhook", handler(async (req, res) => {
@@ -754,11 +778,7 @@ router.post("/billing/webhook", handler(async (req, res) => {
   }
   ok(
     res,
-    await handleStripeWebhook({
-      rawBody,
-      signature: req.headers["stripe-signature"] as string | undefined,
-      event: req.body,
-    }),
+    await handleStripeWebhook(rawBody, req.headers["stripe-signature"] as string | undefined),
   );
 }));
 

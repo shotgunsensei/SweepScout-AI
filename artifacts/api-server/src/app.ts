@@ -7,6 +7,7 @@ import { logger } from "./lib/logger";
 import { AdminAccessError } from "@/lib/admin";
 import { AppConfigError } from "@/lib/env";
 import { AuthenticationError, AuthenticationUnavailableError } from "@/lib/auth/session";
+import { InsufficientCreditsError } from "@/lib/billing";
 
 const app: Express = express();
 if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
@@ -60,12 +61,14 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   else if (err instanceof AuthenticationUnavailableError) status = 503;
   else if (err instanceof AuthenticationError) status = 401;
   else if (err instanceof AppConfigError) status = 422;
+  else if (err instanceof InsufficientCreditsError) status = 402;
   logger.error({ err }, "request failed");
   const userSafe =
     err instanceof AdminAccessError ||
     err instanceof AuthenticationUnavailableError ||
     err instanceof AuthenticationError ||
-    err instanceof AppConfigError;
+    err instanceof AppConfigError ||
+    err instanceof InsufficientCreditsError;
   res.status(status).json({
     ok: false,
     error: status >= 500 && !userSafe ? "Unexpected server error." : message,
