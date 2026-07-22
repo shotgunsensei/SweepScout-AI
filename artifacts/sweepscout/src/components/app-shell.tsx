@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Command, Menu, Search, ShieldCheck, X } from "lucide-react";
+import { Command, Menu, Search, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -8,22 +8,19 @@ import { TermsWarningModal } from "@/components/terms-warning-modal";
 import { apiGet } from "@/lib/api";
 import type { AppConfig } from "@/lib/types";
 
-const nav: Array<{ href: string; label: string; icon: NavIconKey }> = [
-  { href: "/dashboard", label: "Dashboard", icon: "home" },
-  { href: "/dashboard/sweepstakes", label: "Database", icon: "database" },
-  { href: "/dashboard/discovery", label: "Discovery", icon: "radar" },
-  { href: "/dashboard/imports", label: "Imports", icon: "import" },
-  { href: "/dashboard/assistant", label: "AI Assistant", icon: "assistant" },
-  { href: "/dashboard/daily", label: "Daily Workflow", icon: "calendar" },
-  { href: "/dashboard/mobile", label: "Mobile PWA", icon: "mobile" },
-  { href: "/dashboard/queue", label: "Queue", icon: "list" },
-  { href: "/dashboard/entries", label: "Entries", icon: "clipboard" },
-  { href: "/dashboard/roi", label: "Prize ROI", icon: "roi" },
-  { href: "/dashboard/reports", label: "Reports", icon: "reports" },
-  { href: "/dashboard/spam-sources", label: "Spam Sources", icon: "mail" },
-  { href: "/scoring", label: "Scoring", icon: "gauge" },
-  { href: "/dashboard/settings", label: "Settings", icon: "settings" },
-  { href: "/dashboard/admin", label: "Admin", icon: "shield" },
+const nav: Array<{ href: string; label: string; description: string; icon: NavIconKey }> = [
+  { href: "/dashboard", label: "Flight Deck", description: "Dashboard", icon: "home" },
+  { href: "/dashboard/sweepstakes", label: "Radar", description: "Opportunity feed", icon: "radar" },
+  { href: "/dashboard/entries", label: "Mission Log", description: "Entered and skipped tracking", icon: "clipboard" },
+  { href: "/dashboard/daily", label: "Flight Plan", description: "Daily schedule and reminders", icon: "calendar" },
+  { href: "/dashboard/assistant", label: "Co-Pilot", description: "AI research assistant", icon: "assistant" },
+  { href: "/dashboard/discovery", label: "Source Radar", description: "Approved discovery jobs", icon: "database" },
+  { href: "/dashboard/imports", label: "Manual Intake", description: "Administrator imports", icon: "import" },
+  { href: "/dashboard/spam-sources", label: "Risk Signals", description: "Source and inbox risk", icon: "mail" },
+  { href: "/dashboard/reports", label: "Reports", description: "Evidence and compliance", icon: "reports" },
+  { href: "/dashboard/billing", label: "Pilot Credits & Billing", description: "Plan and usage", icon: "gauge" },
+  { href: "/dashboard/settings", label: "Settings", description: "Preferences", icon: "settings" },
+  { href: "/dashboard/admin", label: "Platform Admin", description: "Operator controls", icon: "shield" },
 ];
 
 const fallbackConfig: AppConfig = {
@@ -42,7 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data } = useQuery({ queryKey: ["config"], queryFn: () => apiGet<AppConfig>("/config") });
   const config = data ?? fallbackConfig;
   return (
-    <div className="min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[18.5rem_1fr]">
+    <div className="min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[19rem_1fr]">
       <AppSidebar config={config} />
       <MobileNav config={config} />
       <CommandMenu />
@@ -64,13 +61,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 export function AppSidebar({ config }: { config: AppConfig }) {
   return (
-    <aside className="hidden border-r border-line/80 bg-surface-glass px-4 py-5 backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
+    <aside className="hidden border-r border-line/80 bg-navigation/92 px-4 py-5 backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
       <BrandLockup config={config} />
       <div className="mt-5 rounded-lg border border-line/80 bg-panel/70 p-2">
         <button
           type="button"
           className="flex h-10 w-full items-center justify-between rounded-md border border-line bg-panel-strong px-3 text-sm text-muted transition hover:border-accent/50 hover:text-foreground"
-          onClick={() => window.dispatchEvent(new Event("sweepscout-command-open"))}
+          onClick={() => window.dispatchEvent(new Event("play-pack-pilot-command-open"))}
         >
           <span className="inline-flex items-center gap-2">
             <Search size={16} aria-hidden="true" />
@@ -85,8 +82,8 @@ export function AppSidebar({ config }: { config: AppConfig }) {
         ))}
       </nav>
       <div className="mt-auto rounded-lg border border-accent/20 bg-[linear-gradient(145deg,rgba(79,224,176,0.10),rgba(17,24,27,0.82))] p-3 text-xs leading-5 text-muted">
-        <p className="font-semibold text-foreground">Safety posture</p>
-        <p className="mt-1">Manual approval is locked on. CAPTCHA, payment, SSN, banking, and final submit stay user-controlled.</p>
+        <p className="font-semibold text-foreground">Flight safety</p>
+        <p className="mt-1">Play Pack Pilot researches and organizes. Sponsor rules control each promotion, and every entry stays user-controlled.</p>
       </div>
       {config.warnings.length ? (
         <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs leading-5 text-warning">
@@ -100,7 +97,7 @@ export function AppSidebar({ config }: { config: AppConfig }) {
 export function MobileNav({ config }: { config: AppConfig }) {
   const [open, setOpen] = useState(false);
   const [, navigate] = useLocation();
-  const primary = nav.filter((item) => ["/dashboard", "/dashboard/daily", "/dashboard/assistant", "/dashboard/sweepstakes"].includes(item.href));
+  const primary = nav.filter((item, index) => [0, 1, 2, 3].includes(index));
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-line/80 bg-surface-glass px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-xl lg:hidden">
@@ -120,7 +117,7 @@ export function MobileNav({ config }: { config: AppConfig }) {
               className="min-h-12 rounded-md px-2 text-xs font-medium text-muted transition hover:bg-panel hover:text-foreground"
               onClick={() => navigate(item.href)}
             >
-              {item.label.replace(" Workflow", "").replace("AI ", "")}
+              {item.label}
             </button>
           ))}
         </div>
@@ -168,10 +165,10 @@ export function CommandMenu() {
     };
     const onOpen = () => setOpen(true);
     window.addEventListener("keydown", onKey);
-    window.addEventListener("sweepscout-command-open", onOpen);
+    window.addEventListener("play-pack-pilot-command-open", onOpen);
     return () => {
       window.removeEventListener("keydown", onKey);
-      window.removeEventListener("sweepscout-command-open", onOpen);
+      window.removeEventListener("play-pack-pilot-command-open", onOpen);
     };
   }, []);
   if (!open) return null;
@@ -215,12 +212,14 @@ export function CommandMenu() {
 function BrandLockup({ config, compact = false }: { config: AppConfig; compact?: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-[#07100d] shadow-sm">
-        <ShieldCheck size={22} aria-hidden="true" />
-      </div>
+      <img
+        src="/brand/play-pack-pilot-logo-original.png"
+        alt=""
+        className="h-12 w-16 shrink-0 rounded-lg object-contain"
+      />
       <div className="min-w-0">
-        <p className="truncate font-semibold text-foreground">SweepScout AI</p>
-        <p className="truncate text-xs text-muted">{compact ? "Human-approved command center" : `${config.mode === "supabase" ? "Supabase" : "SQLite"} compliance console`}</p>
+        <p className="truncate font-display text-sm font-extrabold tracking-[0.04em] text-foreground">PLAY PACK PILOT</p>
+        <p className="truncate text-xs text-muted">{compact ? "AI opportunity radar" : `${config.mode === "supabase" ? "Cloud" : "Local"} flight deck`}</p>
       </div>
     </div>
   );

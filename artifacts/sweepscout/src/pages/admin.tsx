@@ -215,9 +215,7 @@ function SaaSOperationsPanel({ summary }: { summary: SaaSAdminSummary }) {
     ["Manual tracker", summary.usage.limits.manualTracker],
     ["Discovery", summary.usage.limits.discovery],
     ["Scoring", summary.usage.limits.scoring],
-    ["Prefill", summary.usage.limits.prefill],
     ["Inbox monitoring", summary.usage.limits.inboxMonitoring],
-    ["Browser extension", summary.usage.limits.browserExtension],
     ["Advanced reports", summary.usage.limits.advancedReporting],
   ] as const;
 

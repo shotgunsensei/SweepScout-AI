@@ -20,7 +20,7 @@ export function LoadingState(props: { title?: string }) {
     <div className="grid gap-4">
       <div className="flex items-center gap-3 rounded-md border border-line bg-panel px-4 py-3 text-sm text-muted">
         <Loader2 className="animate-spin text-accent" size={17} aria-hidden />
-        {props.title ?? "Loading SweepScout workspace"}
+        {props.title ?? "Loading Play Pack Pilot"}
       </div>
       <LoadingSkeleton rows={3} />
     </div>

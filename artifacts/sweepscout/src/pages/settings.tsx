@@ -43,12 +43,12 @@ function SettingsBody({ settings, config }: { settings: AppSettings; config: App
             <SectionHeading icon={<Bot size={18} aria-hidden />} title="Automation controls" />
             <div className="grid gap-3 rounded-md border border-line bg-panel-strong p-4">
               <Checkbox name="automatedDiscoveryEnabled" label="Enable automated discovery jobs" defaultChecked={settings.automatedDiscoveryEnabled} />
-              <Checkbox name="formPrefillEnabled" label="Enable assisted form prefill" defaultChecked={settings.formPrefillEnabled} />
+              <input type="hidden" name="formPrefillEnabled" value="false" />
               <div className="border-t border-line pt-3">
                 <input type="hidden" name="requireApprovalForEveryEntry" value="true" />
                 <Checkbox name="manualApprovalLocked" label="Manual approval required for every entry" checked disabled readOnly />
                 <p className="mt-2 text-sm text-muted">
-                  This control is locked. SweepScout never submits entries without explicit user review and approval.
+                  This control is locked. Play Pack Pilot does not submit entries; users visit the sponsor's official site.
                 </p>
               </div>
             </div>
@@ -104,7 +104,7 @@ function SettingsBody({ settings, config }: { settings: AppSettings; config: App
                 </Field>
               </div>
               <p className="text-sm leading-6 text-muted">
-                SweepScout hashes normalized official-rules page text and only alerts when deadline, eligibility, prize, or entry frequency changes.
+                Play Pack Pilot hashes normalized official-rules page text and only alerts when deadline, eligibility, prize, or entry frequency changes.
               </p>
               <button
                 className="inline-flex h-9 w-fit items-center justify-center rounded-md border border-line bg-panel px-3 text-sm font-medium text-foreground transition hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -218,12 +218,6 @@ function SettingsBody({ settings, config }: { settings: AppSettings; config: App
                 <Field label="Manual entry minutes">
                   <TextInput name="roiManualEntryMinutes" type="number" min={1} max={120} defaultValue={settings.roi.manualEntryMinutes} />
                 </Field>
-                <Field label="Prefill review minutes">
-                  <TextInput name="roiPrefillReviewMinutes" type="number" min={1} max={120} defaultValue={settings.roi.prefillReviewMinutes} />
-                </Field>
-                <Field label="Prefill minutes saved">
-                  <TextInput name="roiPrefillSavedMinutes" type="number" min={0} max={120} defaultValue={settings.roi.prefillSavedMinutes} />
-                </Field>
                 <Field label="Default win probability basis points">
                   <TextInput
                     name="roiDefaultWinProbabilityBasisPoints"
@@ -260,7 +254,7 @@ function SettingsBody({ settings, config }: { settings: AppSettings; config: App
           <RuntimeRow label="Aliases" value={settings.emailAliases.enabled ? "enabled" : "disabled"} />
           <RuntimeRow label="Browser" value={config.browserHeadless ? "headless" : "visible"} />
           <RuntimeRow label="Automated discovery" value={settings.automatedDiscoveryEnabled ? "enabled" : "disabled"} />
-          <RuntimeRow label="Form prefill" value={settings.formPrefillEnabled ? "enabled" : "disabled"} />
+          <RuntimeRow label="Entry automation" value="disabled" />
         </div>
         {settings.inbox.lastPollError ? (
           <div className="mt-4 rounded-md border border-danger/30 bg-danger/10 p-3 text-sm leading-6 text-danger">

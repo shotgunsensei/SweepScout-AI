@@ -48,12 +48,12 @@ export function SweepstakeCard(props: { item: Sweepstake; children?: React.React
             <Link href={`/dashboard/sweepstakes/${item.id}`} className="inline-flex items-center gap-2 rounded-md border border-line bg-panel-strong px-3 py-1.5 text-foreground hover:border-accent/50">
               Details
             </Link>
-            <a href={item.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-accent">
-              Source <ExternalLink size={15} aria-hidden="true" />
+            <a href={item.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-md bg-reward px-3 py-1.5 font-semibold text-[#111827]">
+              Visit Official Sweepstakes <ExternalLink size={15} aria-hidden="true" />
             </a>
             {item.rulesUrl ? (
-              <a href={item.rulesUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-muted hover:text-foreground">
-                Rules <ExternalLink size={15} aria-hidden="true" />
+              <a href={item.rulesUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-muted hover:text-foreground">
+                Official rules <ExternalLink size={15} aria-hidden="true" />
               </a>
             ) : null}
           </div>

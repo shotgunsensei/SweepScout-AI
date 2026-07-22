@@ -1,38 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: dark light;
-  --background: #080d10;
-  --foreground: #f1f6f5;
-  --muted: #98a7a4;
-  --panel: #11181b;
-  --panel-strong: #182225;
-  --line: #263337;
-  --accent: #4fe0b0;
-  --accent-strong: #91b8ff;
-  --danger: #ff6f7d;
-  --warning: #f4bd52;
-  --ok: #67d995;
-  --surface-glass: rgb(17 24 27 / 0.78);
-  --shadow-soft: 0 22px 60px rgb(0 0 0 / 0.32);
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --background: #f5f8f8;
-    --foreground: #111819;
-    --muted: #61706e;
-    --panel: #ffffff;
-    --panel-strong: #eef4f3;
-    --line: #d8e2e0;
-    --accent: #087d61;
-    --accent-strong: #345fbd;
-    --danger: #ba2438;
-    --warning: #946111;
-    --ok: #137846;
-    --surface-glass: rgb(255 255 255 / 0.82);
-    --shadow-soft: 0 22px 60px rgb(21 44 49 / 0.12);
-  }
+  color-scheme: dark;
+  --background: #0d1624;
+  --background-deep: #07101e;
+  --foreground: #f8fafc;
+  --muted: #9eb0c8;
+  --panel: #101e32;
+  --panel-strong: #132b4d;
+  --navigation: #091426;
+  --card: #10223c;
+  --line: #294567;
+  --accent: #22d3ee;
+  --accent-strong: #2563eb;
+  --accent-violet: #7c3aed;
+  --reward: #fbbf24;
+  --danger: #fb7185;
+  --warning: #fbbf24;
+  --ok: #34d399;
+  --info: #38bdf8;
+  --focus: #22d3ee;
+  --surface-glass: rgb(11 26 47 / 0.84);
+  --shadow-soft: 0 24px 72px rgb(0 7 20 / 0.48);
+  --shadow-glow: 0 0 42px rgb(37 99 235 / 0.2);
+  --chart-primary: #22d3ee;
+  --chart-secondary: #7c3aed;
+  --chart-tertiary: #fbbf24;
+  --score-high: #34d399;
+  --score-medium: #fbbf24;
+  --score-low: #fb7185;
+  --confidence-high: #22d3ee;
+  --confidence-medium: #60a5fa;
+  --confidence-low: #94a3b8;
+  --risk-low: #34d399;
+  --risk-medium: #fbbf24;
+  --risk-high: #fb7185;
 }
 
 @theme inline {
@@ -41,23 +43,30 @@
   --color-muted: var(--muted);
   --color-panel: var(--panel);
   --color-panel-strong: var(--panel-strong);
+  --color-navigation: var(--navigation);
+  --color-card: var(--card);
   --color-line: var(--line);
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
+  --color-accent-violet: var(--accent-violet);
+  --color-reward: var(--reward);
   --color-danger: var(--danger);
   --color-warning: var(--warning);
   --color-ok: var(--ok);
+  --color-info: var(--info);
   --color-surface-glass: var(--surface-glass);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Orbitron", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 * {
   box-sizing: border-box;
+  scrollbar-color: var(--line) transparent;
 }
 
 html {
-  background: var(--background);
+  background: var(--background-deep);
   scroll-behavior: smooth;
 }
 
@@ -65,13 +74,20 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--accent) 17%, transparent) 0, transparent 32rem),
-    radial-gradient(circle at 82% 6%, color-mix(in srgb, var(--accent-strong) 14%, transparent) 0, transparent 30rem),
-    linear-gradient(180deg, color-mix(in srgb, var(--panel) 62%, var(--background)) 0%, var(--background) 44rem),
-    var(--background);
+    radial-gradient(circle at 18% 0%, rgb(37 99 235 / 0.16) 0, transparent 34rem),
+    radial-gradient(circle at 88% 10%, rgb(124 58 237 / 0.12) 0, transparent 30rem),
+    linear-gradient(180deg, var(--background) 0%, var(--background-deep) 54rem),
+    var(--background-deep);
   color: var(--foreground);
   font-family: var(--font-sans);
-  letter-spacing: 0;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
 a {
@@ -86,15 +102,44 @@ textarea {
   font: inherit;
 }
 
-::selection {
-  background: rgb(69 196 160 / 0.35);
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
 }
 
-* {
-  scrollbar-color: var(--line) transparent;
+::selection {
+  background: rgb(34 211 238 / 0.3);
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--focus);
   outline-offset: 3px;
+}
+
+.flight-grid {
+  background-image:
+    linear-gradient(rgb(34 211 238 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(34 211 238 / 0.04) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+.flight-path {
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 22px rgb(34 211 238 / 0.54);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

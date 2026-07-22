@@ -1,5 +1,4 @@
 import { Bell, CheckCircle2, Clock3, Flag, SkipForward, Trophy } from "lucide-react";
-import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState, ErrorNotice, LoadingState, SectionHeader } from "@/components/dashboard-kit";
@@ -199,11 +198,6 @@ function EntryListPanel(props: { title: string; entries: EntryLog[]; empty: stri
                   <StatusButton sweepstakeId={entry.sweepstakeId} status="winner_notification" label="Winner Notice" icon="trophy" />
                   <StatusButton sweepstakeId={entry.sweepstakeId} status="suspicious" label="Suspicious" icon="flag" />
                 </div>
-              ) : null}
-              {entry.status === "prefilled" ? (
-                <Link href={`/dashboard/entries/${entry.id}/review`} className="mt-2 inline-flex text-sm text-accent">
-                  Review prefill
-                </Link>
               ) : null}
             </div>
           ))

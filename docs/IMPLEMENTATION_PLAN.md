@@ -10,7 +10,7 @@ exists; its server-side behavior and persistence must work.
 | Phase | Scope | Status after audit |
 | ---: | --- | --- |
 | 0 | Audit and product reset | Complete in documentation; validation required before commit |
-| 1 | Logo and design system | Next; assets supplied outside repo |
+| 1 | Logo and design system | Complete; originals preserved, public experience and app shell migrated |
 | 2 | Authentication and profiles | Blocked on normalized PostgreSQL schema/session middleware |
 | 3 | Sweepstakes/source data model | Required; active Drizzle schema is empty |
 | 4 | Compliant scanner | Reuse discovery primitives; source registry/queue missing |
@@ -58,4 +58,3 @@ Audit date: 2026-07-22.
 - Neither supplied asset was previously stored in the repository.
 - Safe baseline validation and post-change results are recorded in the commit
   handoff rather than overstated here.
-

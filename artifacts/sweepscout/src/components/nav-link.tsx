@@ -11,7 +11,6 @@ import {
   Radar,
   Settings,
   ShieldAlert,
-  Smartphone,
   TrendingUp,
   Upload,
   type LucideIcon,
@@ -30,7 +29,6 @@ const icons = {
   import: Upload,
   list: ListChecks,
   mail: MailWarning,
-  mobile: Smartphone,
   radar: Radar,
   roi: TrendingUp,
   settings: Settings,
@@ -39,7 +37,7 @@ const icons = {
 
 export type NavIconKey = keyof typeof icons;
 
-export function NavLink(props: { href: string; label: string; icon: NavIconKey }) {
+export function NavLink(props: { href: string; label: string; description?: string; icon: NavIconKey }) {
   const [pathname] = useLocation();
   const active = pathname === props.href || (props.href !== "/dashboard" && pathname.startsWith(`${props.href}/`));
   const Icon = icons[props.icon];
@@ -54,6 +52,8 @@ export function NavLink(props: { href: string; label: string; icon: NavIconKey }
           : "border border-transparent text-muted hover:border-line hover:bg-panel hover:text-foreground",
       )}
       aria-current={active ? "page" : undefined}
+      aria-label={props.description ? `${props.label}: ${props.description}` : props.label}
+      title={props.description}
     >
       <Icon size={17} aria-hidden="true" />
       <span className="truncate">{props.label}</span>

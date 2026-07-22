@@ -1,5 +1,4 @@
-import { AlertTriangle, Ban, CheckCircle2, Clock3, MailWarning, ShieldCheck, SkipForward, Wand2 } from "lucide-react";
-import { useLocation } from "wouter";
+import { AlertTriangle, Ban, CheckCircle2, Clock3, ExternalLink, MailWarning, ShieldCheck, SkipForward } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState, ErrorNotice, LoadingState, SectionHeader } from "@/components/dashboard-kit";
@@ -19,9 +18,9 @@ export default function DailyWorkflowPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Daily Sweepstakes Workflow"
-        kicker="Manual approval execution cockpit"
-        description="Work today’s repeatable entries, new eligible opportunities, urgent deadlines, winner alerts, and suspicious decisions from one phone-friendly command surface."
+        title="Flight Plan"
+        kicker="Today's opportunity schedule"
+        description="Review recurring opportunities, new matches, urgent deadlines, inbox alerts, and risk decisions from one focused daily plan."
       >
         <Badge tone="ok">No auto-submit</Badge>
         <Badge tone="warn">Review links before opening</Badge>
@@ -45,7 +44,7 @@ function WorkflowBody({ data }: { data: DailyWorkflowData }) {
         <MetricCard label="Decisions Needed" value={data.stats.suspiciousDecisionCount} sublabel="risk and spam flags" tone={data.stats.suspiciousDecisionCount ? "danger" : "default"} />
       </div>
 
-      <PrefillNextPanel item={data.prefillNext} />
+      <NextOpportunityPanel item={data.prefillNext} />
 
       <div className="grid gap-5 xl:grid-cols-[1.25fr_0.85fr]">
         <Panel>
@@ -115,49 +114,24 @@ function WorkflowBody({ data }: { data: DailyWorkflowData }) {
   );
 }
 
-function PrefillNextPanel({ item }: { item: DailyWorkflowData["prefillNext"] }) {
-  const [, navigate] = useLocation();
-  const prefill = useApiMutation<{ reviewUrl: string }>("/forms/prefill", {
-    onSuccess: (result) => {
-      if (result.reviewUrl) {
-        navigate(toInternalPath(result.reviewUrl));
-      }
-    },
-  });
-
+function NextOpportunityPanel({ item }: { item: DailyWorkflowData["prefillNext"] }) {
   return (
-    <Panel className="bg-[linear-gradient(135deg,rgba(63,236,179,0.12),rgba(19,24,25,0.94)_42%)]">
+    <Panel className="bg-[linear-gradient(135deg,rgb(34_211_238_/_0.12),rgb(16_30_50_/_0.96)_42%)]">
       <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="ok">Prefill next</Badge>
-            <Badge>Manual submit only</Badge>
+            <Badge tone="ok">Next on your plan</Badge>
+            <Badge>Enter on sponsor site</Badge>
           </div>
-          <h2 className="mt-3 text-balance text-xl font-semibold text-foreground">{item?.sweepstake.title ?? "No prefill-ready entry"}</h2>
+          <h2 className="mt-3 text-balance text-xl font-semibold text-foreground">{item?.sweepstake.title ?? "No opportunity is due right now"}</h2>
           <p className="mt-2 max-w-3xl text-pretty text-sm leading-6 text-muted">
-            Assisted prefill requires vault consent, per-entry approval, and a final review screen. SweepScout does not submit forms, bypass CAPTCHA, or open claim links automatically.
+            Review the listing, verify the sponsor's current official rules, and decide whether to visit the official promotion. Play Pack Pilot does not submit entries for you.
           </p>
         </div>
         {item ? (
-          <form
-            className="rounded-md border border-line bg-panel/90 p-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              prefill.mutate(formToObject(event.currentTarget));
-            }}
-          >
-            <input type="hidden" name="sweepstakeId" value={item.sweepstake.id} />
-            <input type="hidden" name="formUrl" value={item.formUrl} />
-            <div className="grid gap-3">
-              <Checkbox name="prefillApproved" required label="Approve profile prefill" />
-              <Checkbox name="useAiFallback" defaultChecked label="AI label fallback" />
-              <SubmitButton disabled={prefill.isPending}>
-                <span className="inline-flex items-center gap-2">
-                  <Wand2 size={15} aria-hidden="true" /> Prefill Next
-                </span>
-              </SubmitButton>
-            </div>
-          </form>
+          <a href={item.sweepstake.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-reward px-5 text-sm font-bold text-[#111827]">
+            Visit Official Sweepstakes <ExternalLink size={16} aria-hidden="true" />
+          </a>
         ) : null}
       </div>
     </Panel>
@@ -358,7 +332,7 @@ function ReviewInboxForm({ alert }: { alert: InboxAlert }) {
         }}
       >
         <input type="hidden" name="status" value="reviewed" />
-        <input type="hidden" name="notes" value="Reviewed from the daily workflow. No links were opened by SweepScout." />
+        <input type="hidden" name="notes" value="Reviewed from the Play Pack Pilot Flight Plan. No links were opened automatically." />
         <SubmitButton disabled={review.isPending}>Mark Reviewed</SubmitButton>
       </form>
       <form
@@ -393,12 +367,4 @@ function deadlineTone(value: string | null) {
   if (delta <= 48 * 60 * 60 * 1000) return "danger";
   if (delta <= 7 * 24 * 60 * 60 * 1000) return "warn";
   return "default";
-}
-
-function toInternalPath(reviewUrl: string) {
-  try {
-    return new URL(reviewUrl, window.location.origin).pathname;
-  } catch {
-    return reviewUrl;
-  }
 }

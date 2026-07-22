@@ -142,7 +142,7 @@ export default function AssistantPage() {
                   <Bot size={22} aria-hidden="true" />
                 </div>
                 <div>
-                  <h2 className="text-balance text-xl font-semibold text-foreground">SweepScout grounded assistant</h2>
+                  <h2 className="text-balance text-xl font-semibold text-foreground">Play Pack Pilot grounded Co-Pilot</h2>
                   <p className="mt-2 text-pretty text-sm leading-6 text-muted">
                     Answers use saved sweepstakes records, extracted rules, official rules text, profile eligibility data, and entry history.
                   </p>
