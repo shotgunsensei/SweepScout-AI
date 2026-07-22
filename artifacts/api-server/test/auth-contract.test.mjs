@@ -48,6 +48,8 @@ test("local development sessions protect mutations and enforce owner authorizati
 
   const admin = await fetch(`http://127.0.0.1:${port}/api/admin`, { headers: { cookie: cookies } });
   assert.equal(admin.status, 403);
+  const sourceRegistry = await fetch(`http://127.0.0.1:${port}/api/admin/sources`, { headers: { cookie: cookies } });
+  assert.equal(sourceRegistry.status, 403);
 
   const logout = await fetch(`http://127.0.0.1:${port}/api/auth/logout`, {
     method: "POST",

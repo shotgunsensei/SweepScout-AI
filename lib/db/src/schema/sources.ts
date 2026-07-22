@@ -110,6 +110,9 @@ export const sourceScanJobs = pgTable(
   (table) => [
     index("source_scan_jobs_source_created_idx").on(table.sourceId, table.createdAt),
     index("source_scan_jobs_status_created_idx").on(table.status, table.createdAt),
+    uniqueIndex("source_scan_jobs_one_active_per_source_uidx")
+      .on(table.sourceId)
+      .where(sql`${table.status} in ('queued', 'running')`),
     uniqueIndex("source_scan_jobs_correlation_uidx").on(table.correlationId),
     check("source_scan_jobs_counts_nonnegative", sql`${table.pagesRequested} >= 0 and ${table.pagesSuccessful} >= 0 and ${table.pagesFailed} >= 0 and ${table.itemsDiscovered} >= 0 and ${table.attemptCount} >= 0`),
   ],

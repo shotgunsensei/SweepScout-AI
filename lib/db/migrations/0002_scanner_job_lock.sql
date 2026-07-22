@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "source_scan_jobs_one_active_per_source_uidx" ON "source_scan_jobs" USING btree ("source_id") WHERE "source_scan_jobs"."status" in ('queued', 'running');

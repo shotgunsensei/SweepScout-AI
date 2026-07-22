@@ -44,6 +44,15 @@ import {
   getActiveTenant,
   getSaaSAdminSummary,
 } from "@/lib/services/tenancy";
+import {
+  listDiscoveredUrlReviews,
+  listRegisteredSources,
+  listSourceScanHistory,
+  registerSource,
+  reviewDiscoveredUrl,
+  runRegisteredSource,
+  updateRegisteredSource,
+} from "@/lib/scanner/admin";
 
 const router: IRouter = Router();
 
@@ -123,6 +132,21 @@ function safeFilename(value: string) {
 router.get("/admin/access", handler(async (req, res) => {
   const admin = await requireAdmin(req);
   ok(res, { authorized: true, admin });
+}));
+
+router.get("/admin/sources", handler(async (req, res) => {
+  await requireAdmin(req);
+  ok(res, await listRegisteredSources());
+}));
+
+router.get("/admin/sources/:id/jobs", handler(async (req, res) => {
+  await requireAdmin(req);
+  ok(res, await listSourceScanHistory(String(req.params.id), Number(req.query.limit ?? 50)));
+}));
+
+router.get("/admin/discovered-urls", handler(async (req, res) => {
+  await requireAdmin(req);
+  ok(res, await listDiscoveredUrlReviews(String(req.query.status ?? "new"), Number(req.query.limit ?? 100)));
 }));
 
 router.get("/config", handler(async (_req, res) => {
@@ -325,6 +349,28 @@ router.get("/admin/export/entries", handler(async (req, res) => {
 // ---------------------------------------------------------------------------
 // Mutations
 // ---------------------------------------------------------------------------
+
+router.post("/admin/sources", handler(async (req, res) => {
+  await requireAdmin(req);
+  ok(res, await registerSource(req.body ?? {}), 201);
+}));
+
+router.put("/admin/sources/:id", handler(async (req, res) => {
+  await requireAdmin(req);
+  ok(res, await updateRegisteredSource(String(req.params.id), req.body ?? {}));
+}));
+
+router.post("/admin/sources/:id/run", handler(async (req, res) => {
+  await requireAdmin(req);
+  ok(res, await runRegisteredSource(String(req.params.id)), 202);
+}));
+
+router.put("/admin/discovered-urls/:id/review", handler(async (req, res) => {
+  await requireAdmin(req);
+  const decision = req.body?.decision;
+  if (decision !== "queue" && decision !== "reject") return fail(res, "Decision must be queue or reject.");
+  ok(res, await reviewDiscoveredUrl(String(req.params.id), decision));
+}));
 
 router.post("/discovery/run", handler(async (req, res) => {
   const rate = checkRateLimit(`discovery:${clientKey(req)}`, 6, 60_000);

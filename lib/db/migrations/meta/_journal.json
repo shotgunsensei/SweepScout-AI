@@ -15,6 +15,13 @@
       "when": 1784744818123,
       "tag": "0001_authentication_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784746566655,
+      "tag": "0002_scanner_job_lock",
+      "breakpoints": true
     }
   ]
 }
