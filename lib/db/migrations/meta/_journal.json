@@ -8,6 +8,13 @@
       "when": 1784744149529,
       "tag": "0000_normalized_sweepstakes_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784744818123,
+      "tag": "0001_authentication_profiles",
+      "breakpoints": true
     }
   ]
 }

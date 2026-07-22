@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Command, Menu, Search, X } from "lucide-react";
+import { Command, LogOut, Menu, Search, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -7,6 +7,7 @@ import { NavLink, type NavIconKey } from "@/components/nav-link";
 import { TermsWarningModal } from "@/components/terms-warning-modal";
 import { apiGet } from "@/lib/api";
 import type { AppConfig } from "@/lib/types";
+import { useAuth } from "@/lib/auth";
 
 const nav: Array<{ href: string; label: string; description: string; icon: NavIconKey }> = [
   { href: "/dashboard", label: "Flight Deck", description: "Dashboard", icon: "home" },
@@ -60,6 +61,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 export function AppSidebar({ config }: { config: AppConfig }) {
+  const { session, logout } = useAuth();
+  const visibleNav = nav.filter((item) => item.href !== "/dashboard/admin" || session?.user.platformRole !== "user");
   return (
     <aside className="hidden border-r border-line/80 bg-navigation/92 px-4 py-5 backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
       <BrandLockup config={config} />
@@ -77,10 +80,15 @@ export function AppSidebar({ config }: { config: AppConfig }) {
         </button>
       </div>
       <nav className="mt-4 grid gap-1 overflow-y-auto pr-1" aria-label="Primary">
-        {nav.map((item) => (
+        {visibleNav.map((item) => (
           <NavLink key={item.href} {...item} />
         ))}
       </nav>
+      <div className="mt-4 flex items-center gap-3 rounded-lg border border-line bg-panel/80 p-3">
+        <div className="flex size-9 items-center justify-center rounded-full bg-accent/15 text-sm font-bold text-accent">{session?.user.displayName.slice(0, 1).toUpperCase()}</div>
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{session?.user.displayName}</p><p className="truncate text-xs text-muted">{session?.user.email}</p></div>
+        <button type="button" aria-label="Sign out" className="rounded-md p-2 text-muted hover:bg-panel-strong hover:text-foreground" onClick={() => void logout()}><LogOut size={16} /></button>
+      </div>
       <div className="mt-auto rounded-lg border border-accent/20 bg-[linear-gradient(145deg,rgba(79,224,176,0.10),rgba(17,24,27,0.82))] p-3 text-xs leading-5 text-muted">
         <p className="font-semibold text-foreground">Flight safety</p>
         <p className="mt-1">Play Pack Pilot researches and organizes. Sponsor rules control each promotion, and every entry stays user-controlled.</p>
@@ -97,6 +105,8 @@ export function AppSidebar({ config }: { config: AppConfig }) {
 export function MobileNav({ config }: { config: AppConfig }) {
   const [open, setOpen] = useState(false);
   const [, navigate] = useLocation();
+  const { session, logout } = useAuth();
+  const visibleNav = nav.filter((item) => item.href !== "/dashboard/admin" || session?.user.platformRole !== "user");
   const primary = nav.filter((item, index) => [0, 1, 2, 3].includes(index));
   return (
     <>
@@ -132,12 +142,13 @@ export function MobileNav({ config }: { config: AppConfig }) {
               </button>
             </div>
             <div className="mt-4 grid gap-1 overflow-y-auto">
-              {nav.map((item) => (
+              {visibleNav.map((item) => (
                 <Link key={item.href} href={item.href} className="rounded-md px-3 py-2 text-sm text-muted hover:bg-panel-strong hover:text-foreground" onClick={() => setOpen(false)}>
                   {item.label}
                 </Link>
               ))}
             </div>
+            <button type="button" onClick={() => void logout()} className="mt-4 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line text-sm text-muted"><LogOut size={16} /> Sign out</button>
           </div>
         </div>
       ) : null}

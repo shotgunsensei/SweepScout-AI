@@ -164,13 +164,13 @@ function PublicNavigation() {
         </nav>
         <div className="flex items-center gap-2">
           <Link
-            href="/dashboard"
+            href="/login"
             className="hidden min-h-11 items-center rounded-full border border-line bg-panel/60 px-5 text-sm font-semibold transition hover:border-accent/60 sm:inline-flex"
           >
             Log in
           </Link>
           <Link
-            href="/dashboard"
+            href="/signup"
             className="inline-flex min-h-11 items-center gap-2 rounded-full bg-reward px-5 text-sm font-extrabold text-[#111827] shadow-[0_0_28px_rgb(251_191_36_/_0.18)] transition hover:-translate-y-0.5 hover:bg-[#ffd45a]"
           >
             Get Started <ArrowRight size={16} aria-hidden="true" />
@@ -203,7 +203,7 @@ function Hero() {
             Play Pack Pilot scans approved sources for sweepstakes and giveaways, analyzes the rules, and helps you focus on opportunities that match your eligibility, interests, and available time.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/dashboard/sweepstakes" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-reward px-6 text-sm font-extrabold text-[#111827] transition hover:-translate-y-0.5 hover:bg-[#ffd45a]">
+            <Link href="/signup" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-reward px-6 text-sm font-extrabold text-[#111827] transition hover:-translate-y-0.5 hover:bg-[#ffd45a]">
               Start Scanning <Radar size={17} aria-hidden="true" />
             </Link>
             <a href="#how-it-works" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-accent-strong bg-panel/55 px-6 text-sm font-bold transition hover:border-accent hover:bg-panel">
@@ -387,7 +387,7 @@ function PricingSection() {
               <ul className="mt-6 space-y-3 text-sm text-muted">
                 {plan.features.map((feature) => <li key={feature} className="flex gap-2"><Check className="mt-0.5 shrink-0 text-ok" size={16} aria-hidden="true" />{feature}</li>)}
               </ul>
-              <Link href={plan.name === "Free Flight" ? "/dashboard/sweepstakes" : "/dashboard/admin"} className={`mt-8 inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-extrabold transition hover:-translate-y-0.5 ${plan.featured ? "bg-reward text-[#111827]" : "border border-accent-strong bg-panel-strong text-foreground hover:border-accent"}`}>
+              <Link href="/signup" className={`mt-8 inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-extrabold transition hover:-translate-y-0.5 ${plan.featured ? "bg-reward text-[#111827]" : "border border-accent-strong bg-panel-strong text-foreground hover:border-accent"}`}>
                 {plan.cta}
               </Link>
             </article>
@@ -425,7 +425,7 @@ function FinalCallToAction() {
         <Trophy className="mx-auto text-reward" size={42} aria-hidden="true" />
         <h2 className="mt-5 text-balance font-display text-4xl font-extrabold sm:text-5xl">Ready to put better opportunities on your radar?</h2>
         <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-8 text-muted">Start with discovery, build your Hangar, and let Co-Pilot help you decide where your time is best spent.</p>
-        <Link href="/dashboard/sweepstakes" className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-full bg-reward px-7 text-sm font-extrabold text-[#111827] transition hover:-translate-y-0.5 hover:bg-[#ffd45a]">Start Scanning <ArrowRight size={17} aria-hidden="true" /></Link>
+        <Link href="/signup" className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-full bg-reward px-7 text-sm font-extrabold text-[#111827] transition hover:-translate-y-0.5 hover:bg-[#ffd45a]">Start Scanning <ArrowRight size={17} aria-hidden="true" /></Link>
       </div>
     </section>
   );

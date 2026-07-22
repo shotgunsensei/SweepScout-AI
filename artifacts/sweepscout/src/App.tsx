@@ -17,6 +17,9 @@ import ExtractionPage from "@/pages/extraction";
 import SettingsPage from "@/pages/settings";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
+import OnboardingPage from "@/pages/onboarding";
+import { AuthCallbackPage, ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage } from "@/pages/auth";
+import { AuthProvider, ProtectedRoute } from "@/lib/auth";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,27 +35,34 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
 
-      <Route path="/dashboard" component={DashboardPage} />
-      <Route path="/dashboard/sweepstakes/:id" component={SweepstakesDetailPage} />
-      <Route path="/dashboard/sweepstakes" component={SweepstakesPage} />
-      <Route path="/dashboard/discovery" component={DiscoveryPage} />
-      <Route path="/dashboard/imports" component={ImportsPage} />
-      <Route path="/dashboard/assistant" component={AssistantPage} />
-      <Route path="/dashboard/daily" component={DailyWorkflowPage} />
+      <Route path="/login" component={LoginPage} />
+      <Route path="/signup" component={SignupPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
+      <Route path="/auth/callback" component={AuthCallbackPage} />
+      <Route path="/onboarding">{() => <ProtectedRoute><OnboardingPage /></ProtectedRoute>}</Route>
+
+      <Route path="/dashboard">{() => <ProtectedRoute><DashboardPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/sweepstakes/:id">{() => <ProtectedRoute><SweepstakesDetailPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/sweepstakes">{() => <ProtectedRoute><SweepstakesPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/discovery">{() => <ProtectedRoute><DiscoveryPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/imports">{() => <ProtectedRoute><ImportsPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/assistant">{() => <ProtectedRoute><AssistantPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/daily">{() => <ProtectedRoute><DailyWorkflowPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/queue">{() => <Redirect to="/dashboard/entries" />}</Route>
       <Route path="/dashboard/mobile">{() => <Redirect to="/dashboard" />}</Route>
       <Route path="/dashboard/entries/queue">{() => <Redirect to="/dashboard/entries" />}</Route>
       <Route path="/dashboard/entries/:id/review">{() => <Redirect to="/dashboard/entries" />}</Route>
-      <Route path="/dashboard/entries" component={EntriesPage} />
-      <Route path="/dashboard/spam-sources" component={SpamSourcesPage} />
-      <Route path="/dashboard/roi" component={RoiPage} />
-      <Route path="/dashboard/reports" component={ReportsPage} />
-      <Route path="/dashboard/settings" component={SettingsPage} />
-      <Route path="/dashboard/billing" component={AdminPage} />
-      <Route path="/dashboard/admin" component={AdminPage} />
+      <Route path="/dashboard/entries">{() => <ProtectedRoute><EntriesPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/spam-sources">{() => <ProtectedRoute><SpamSourcesPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/roi">{() => <ProtectedRoute><RoiPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/reports">{() => <ProtectedRoute><ReportsPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/settings">{() => <ProtectedRoute><SettingsPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/billing">{() => <ProtectedRoute><AdminPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/admin">{() => <ProtectedRoute><AdminPage /></ProtectedRoute>}</Route>
 
-      <Route path="/scoring" component={ScoringPage} />
-      <Route path="/extraction" component={ExtractionPage} />
+      <Route path="/scoring">{() => <ProtectedRoute><ScoringPage /></ProtectedRoute>}</Route>
+      <Route path="/extraction">{() => <ProtectedRoute><ExtractionPage /></ProtectedRoute>}</Route>
       <Route path="/vault">{() => <Redirect to="/dashboard/settings" />}</Route>
 
       <Route path="/sweepstakes">{() => <Redirect to="/dashboard/sweepstakes" />}</Route>
@@ -77,9 +87,11 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-        <Router />
-      </WouterRouter>
+      <AuthProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <Router />
+        </WouterRouter>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

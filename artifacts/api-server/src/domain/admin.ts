@@ -1,5 +1,5 @@
-import { createSupabaseAuthClient } from "@/lib/supabase/auth";
-import { getAppConfig } from "@/lib/env";
+import type { Request } from "express";
+import { requireRequestAuth } from "@/lib/auth/session";
 import type { EntryLog } from "@/lib/types";
 
 export type AdminSession = {
@@ -15,38 +15,18 @@ export class AdminAccessError extends Error {
   }
 }
 
-export async function getAdminSession(): Promise<AdminSession | null> {
-  const config = getAppConfig();
-  if (!config.supabaseConfigured) {
-    if (process.env.NODE_ENV !== "production" || process.env.SWEEPSCOUT_LOCAL_ADMIN === "true") {
-      return { mode: "local", label: "Local owner", role: "owner" };
-    }
-    return null;
-  }
-
-  const supabase = await createSupabaseAuthClient();
-  if (!supabase) return null;
-
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-
-  const role = adminRoleFromMetadata(data.user.app_metadata);
-  const emailAllowed = listFromEnv("SWEEPSCOUT_ADMIN_EMAILS").includes((data.user.email ?? "").toLowerCase());
-  const idAllowed = listFromEnv("SWEEPSCOUT_ADMIN_USER_IDS").includes(data.user.id.toLowerCase());
-
-  if (!role && !emailAllowed && !idAllowed) {
-    return null;
-  }
-
+export async function getAdminSession(req: Request): Promise<AdminSession | null> {
+  const auth = requireRequestAuth(req);
+  if (auth.platformRole !== "owner" && auth.platformRole !== "admin") return null;
   return {
-    mode: "supabase",
-    label: data.user.email ?? data.user.id,
-    role: role ?? "admin",
+    mode: auth.mode,
+    label: auth.email,
+    role: auth.platformRole,
   };
 }
 
-export async function requireAdmin() {
-  const session = await getAdminSession();
+export async function requireAdmin(req: Request) {
+  const session = await getAdminSession(req);
   if (!session) {
     throw new AdminAccessError();
   }
@@ -93,30 +73,6 @@ export function entriesToCsv(entries: EntryLog[]) {
   ]);
 
   return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
-}
-
-function adminRoleFromMetadata(metadata: Record<string, unknown>) {
-  const directRole = stringFrom(metadata.role) ?? stringFrom(metadata.sweepscout_role);
-  if (directRole === "owner" || directRole === "admin") {
-    return directRole;
-  }
-
-  const roles = metadata.roles;
-  if (Array.isArray(roles) && roles.some((role) => role === "owner")) return "owner";
-  if (Array.isArray(roles) && roles.some((role) => role === "admin")) return "admin";
-
-  return null;
-}
-
-function listFromEnv(key: string) {
-  return (process.env[key] ?? "")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function stringFrom(value: unknown) {
-  return typeof value === "string" ? value.toLowerCase() : null;
 }
 
 function csvCell(value: string) {

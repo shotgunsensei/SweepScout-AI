@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Bell, Bot, Clock3, Inbox, LockKeyhole, ScrollText, SlidersHorizontal } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Bell, Bot, Clock3, Inbox, LockKeyhole, ScrollText, SlidersHorizontal, Trash2, UserRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { ErrorNotice, LoadingState, SectionHeader } from "@/components/dashboard-kit";
@@ -20,8 +20,57 @@ export default function SettingsPage() {
       </PageHeader>
       {isLoading ? <LoadingState /> : null}
       {isError ? <ErrorNotice title="Unable to load settings" body="The API request failed. Confirm the API server is running." /> : null}
+      <AccountProfilePanel />
       {data ? <SettingsBody settings={data.settings} config={data.config} /> : null}
     </AppShell>
+  );
+}
+
+type PersonalProfile = {
+  email: string;
+  displayName: string;
+  timezone: string;
+  countryCode: string | null;
+  stateOrRegion: string | null;
+  postalCode: string | null;
+  birthDate: string | null;
+  platformRole: "user" | "admin" | "owner";
+};
+
+function AccountProfilePanel() {
+  const profile = useQuery({ queryKey: ["personal-profile"], queryFn: () => apiGet<PersonalProfile>("/auth/profile") });
+  const save = useApiMutation<PersonalProfile>("/auth/profile", { method: "PUT" });
+  const deletion = useApiMutation<{ status: string; requestedAt: string }>("/auth/account-deletion");
+  const [deletionReason, setDeletionReason] = useState("");
+  if (profile.isLoading) return <LoadingState title="Loading private profile" />;
+  if (!profile.data) return profile.isError ? <ErrorNotice title="Unable to load private profile" body="Your authenticated profile could not be loaded." /> : null;
+  return (
+    <Panel>
+      <SectionHeader title="Personal flight profile" eyebrow="Private account data" />
+      <form className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(event) => {
+        event.preventDefault();
+        const body = formToObject(event.currentTarget);
+        save.mutate({
+          ...body,
+          countryCode: String(body.countryCode ?? "").toUpperCase(),
+          birthDate: String(body.birthDate ?? "") || null,
+        });
+      }}>
+        <Field label="Display name"><TextInput name="displayName" defaultValue={profile.data.displayName} /></Field>
+        <Field label="Account email"><TextInput name="email" value={profile.data.email} disabled readOnly /></Field>
+        <Field label="Timezone"><TextInput name="timezone" defaultValue={profile.data.timezone} /></Field>
+        <Field label="Country code"><TextInput name="countryCode" maxLength={2} defaultValue={profile.data.countryCode ?? ""} /></Field>
+        <Field label="State or region"><TextInput name="stateOrRegion" defaultValue={profile.data.stateOrRegion ?? ""} /></Field>
+        <Field label="Postal code"><TextInput name="postalCode" defaultValue={profile.data.postalCode ?? ""} /></Field>
+        <Field label="Birth date"><TextInput name="birthDate" type="date" defaultValue={profile.data.birthDate ?? ""} /></Field>
+        <div className="flex items-end"><SubmitButton disabled={save.isPending}>{save.isPending ? "Saving…" : "Save private profile"}</SubmitButton></div>
+      </form>
+      <div className="mt-6 rounded-xl border border-danger/25 bg-danger/5 p-4">
+        <h3 className="flex items-center gap-2 font-semibold text-foreground"><Trash2 size={17} /> Account deletion request</h3>
+        <p className="mt-2 text-sm leading-6 text-muted">Request an operator-reviewed deletion. Billing, audit, and legal retention checks happen before destructive removal.</p>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row"><input value={deletionReason} onChange={(event) => setDeletionReason(event.currentTarget.value)} placeholder="Optional reason" className="h-10 flex-1 rounded-lg border border-line bg-panel-strong px-3 text-sm outline-none focus:border-danger" /><button type="button" disabled={deletion.isPending} onClick={() => deletion.mutate({ reason: deletionReason })} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-danger/40 px-4 text-sm font-semibold text-danger hover:bg-danger/10 disabled:opacity-60"><UserRound size={16} /> Request deletion</button></div>
+      </div>
+    </Panel>
   );
 }
 

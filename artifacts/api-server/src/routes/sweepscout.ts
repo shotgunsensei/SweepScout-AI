@@ -120,6 +120,11 @@ function safeFilename(value: string) {
 // Reads
 // ---------------------------------------------------------------------------
 
+router.get("/admin/access", handler(async (req, res) => {
+  const admin = await requireAdmin(req);
+  ok(res, { authorized: true, admin });
+}));
+
 router.get("/config", handler(async (_req, res) => {
   ok(res, getAppConfig());
 }));
@@ -283,8 +288,8 @@ router.get("/billing/summary", handler(async (_req, res) => {
   ok(res, await getSaaSAdminSummary());
 }));
 
-router.get("/admin", handler(async (_req, res) => {
-  const admin = await getAdminSession();
+router.get("/admin", handler(async (req, res) => {
+  const admin = await getAdminSession(req);
   if (!admin) {
     fail(res, "Admin access required.", 403);
     return;
@@ -303,8 +308,8 @@ router.get("/admin", handler(async (_req, res) => {
   ok(res, { admin, discoveryJobs, extractionJobs, sweepstakes, blockedDomains, entries, auditLogs, saas, reputation, config: getAppConfig() });
 }));
 
-router.get("/admin/export/entries", handler(async (_req, res) => {
-  const admin = await getAdminSession();
+router.get("/admin/export/entries", handler(async (req, res) => {
+  const admin = await getAdminSession(req);
   if (!admin) {
     fail(res, "Admin access required.", 403);
     return;
@@ -738,19 +743,19 @@ router.put("/settings", handler(async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.post("/admin/retry-extraction", handler(async (req, res) => {
-  await requireAdmin();
+  await requireAdmin(req);
   const job = await runRulesExtraction(String(req.body?.sweepstakeId ?? ""));
   ok(res, job);
 }));
 
 router.post("/admin/rescore", handler(async (req, res) => {
-  await requireAdmin();
+  await requireAdmin(req);
   const updated = await rescoreSweepstakeById(String(req.body?.sweepstakeId ?? ""));
   ok(res, updated);
 }));
 
 router.post("/admin/block-domain", handler(async (req, res) => {
-  await requireAdmin();
+  await requireAdmin(req);
   const store = await getStore();
   const domain = normalizeDomainInput(String(req.body?.domain ?? ""));
   const saved = await store.saveBlockedDomain({
