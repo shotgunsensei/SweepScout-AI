@@ -48,3 +48,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# SQLite runtime files
+*.sqlite-wal
+*.sqlite-shm
