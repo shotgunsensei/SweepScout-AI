@@ -36,6 +36,8 @@ export const entryFrequencyEnum = pgEnum("entry_frequency", [
 
 export const qualityFlagSeverityEnum = pgEnum("quality_flag_severity", ["info", "low", "medium", "high", "critical"]);
 export const qualityFlagStatusEnum = pgEnum("quality_flag_status", ["open", "reviewing", "resolved", "dismissed"]);
+export const enrichmentRunStatusEnum = pgEnum("enrichment_run_status", ["running", "completed", "needs_review", "failed"]);
+export const mergeEventStatusEnum = pgEnum("merge_event_status", ["applied", "undone"]);
 
 export const sweepstakes = pgTable(
   "sweepstakes",
@@ -215,6 +217,74 @@ export const sweepstakesChangeEvents = pgTable(
     sourceId: uuid("source_id").references(() => sources.id, { onDelete: "set null" }),
   },
   (table) => [index("sweepstakes_change_events_sweepstakes_idx").on(table.sweepstakesId, table.detectedAt)],
+);
+
+export const aiEnrichmentRuns = pgTable(
+  "ai_enrichment_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    discoveredUrlId: uuid("discovered_url_id").notNull().references(() => discoveredUrls.id, { onDelete: "restrict" }),
+    sourceId: uuid("source_id").notNull().references(() => sources.id, { onDelete: "restrict" }),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    status: enrichmentRunStatusEnum("status").notNull().default("running"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    estimatedCostUsd: numeric("estimated_cost_usd", { precision: 12, scale: 6 }).notNull().default("0"),
+    errorCode: text("error_code"),
+    startedAt: timestamp("started_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true, mode: "string" }),
+  },
+  (table) => [
+    index("ai_enrichment_runs_status_started_idx").on(table.status, table.startedAt),
+    check("ai_enrichment_runs_usage_nonnegative", sql`${table.inputTokens} >= 0 and ${table.outputTokens} >= 0 and ${table.estimatedCostUsd} >= 0`),
+  ],
+);
+
+export const sweepstakesFieldEvidence = pgTable(
+  "sweepstakes_field_evidence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sweepstakesId: uuid("sweepstakes_id").notNull().references(() => sweepstakes.id, { onDelete: "cascade" }),
+    enrichmentRunId: uuid("enrichment_run_id").notNull().references(() => aiEnrichmentRuns.id, { onDelete: "restrict" }),
+    fieldName: text("field_name").notNull(),
+    fieldValue: jsonb("field_value"),
+    confidence: numeric("confidence", { precision: 5, scale: 4 }).notNull(),
+    sourceReference: text("source_reference").notNull(),
+    evidenceText: text("evidence_text").notNull().default(""),
+    evidenceLocation: jsonb("evidence_location").notNull().default(sql`'{}'::jsonb`),
+    authoritative: boolean("authoritative").notNull().default(false),
+    extractedAt: timestamp("extracted_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("sweepstakes_field_evidence_run_field_uidx").on(table.enrichmentRunId, table.fieldName),
+    index("sweepstakes_field_evidence_sweepstakes_idx").on(table.sweepstakesId, table.fieldName, table.extractedAt),
+    check("sweepstakes_field_evidence_confidence_valid", sql`${table.confidence} between 0 and 1`),
+  ],
+);
+
+export const sweepstakesMergeEvents = pgTable(
+  "sweepstakes_merge_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    targetSweepstakesId: uuid("target_sweepstakes_id").notNull().references(() => sweepstakes.id, { onDelete: "restrict" }),
+    sourceSweepstakesId: uuid("source_sweepstakes_id").references(() => sweepstakes.id, { onDelete: "restrict" }),
+    enrichmentRunId: uuid("enrichment_run_id").references(() => aiEnrichmentRuns.id, { onDelete: "restrict" }),
+    matchScore: numeric("match_score", { precision: 5, scale: 4 }).notNull(),
+    matchedSignals: jsonb("matched_signals").notNull().default(sql`'{}'::jsonb`),
+    sourceSnapshot: jsonb("source_snapshot").notNull(),
+    status: mergeEventStatusEnum("status").notNull().default("applied"),
+    mergedBy: uuid("merged_by"),
+    mergedAt: timestamp("merged_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+    undoneBy: uuid("undone_by"),
+    undoneAt: timestamp("undone_at", { withTimezone: true, mode: "string" }),
+  },
+  (table) => [
+    index("sweepstakes_merge_events_target_idx").on(table.targetSweepstakesId, table.status, table.mergedAt),
+    check("sweepstakes_merge_events_score_valid", sql`${table.matchScore} between 0 and 1`),
+    check("sweepstakes_merge_events_undo_valid", sql`(${table.status} = 'applied' and ${table.undoneAt} is null and ${table.undoneBy} is null) or (${table.status} = 'undone' and ${table.undoneAt} is not null and ${table.undoneBy} is not null)`),
+  ],
 );
 
 export const insertSweepstakesSchema = createInsertSchema(sweepstakes);

@@ -18,6 +18,7 @@ async function buildAll() {
     entryPoints: {
       index: path.resolve(artifactDir, "src/index.ts"),
       scanner: path.resolve(artifactDir, "src/domain/scanner/index.ts"),
+      enrichment: path.resolve(artifactDir, "src/domain/enrichment/index.ts"),
     },
     platform: "node",
     bundle: true,

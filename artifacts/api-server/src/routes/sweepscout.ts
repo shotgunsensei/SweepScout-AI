@@ -53,6 +53,8 @@ import {
   runRegisteredSource,
   updateRegisteredSource,
 } from "@/lib/scanner/admin";
+import { runQueuedDiscoveryEnrichment, undoAdministrativeMerge } from "@/lib/enrichment/admin";
+import { requireRequestAuth } from "@/lib/auth/session";
 
 const router: IRouter = Router();
 
@@ -147,6 +149,16 @@ router.get("/admin/sources/:id/jobs", handler(async (req, res) => {
 router.get("/admin/discovered-urls", handler(async (req, res) => {
   await requireAdmin(req);
   ok(res, await listDiscoveredUrlReviews(String(req.query.status ?? "new"), Number(req.query.limit ?? 100)));
+}));
+
+router.post("/admin/discovered-urls/:id/enrich", handler(async (req, res) => {
+  await requireAdmin(req);
+  ok(res, await runQueuedDiscoveryEnrichment(String(req.params.id)), 202);
+}));
+
+router.post("/admin/merges/:id/undo", handler(async (req, res) => {
+  await requireAdmin(req);
+  ok(res, await undoAdministrativeMerge(String(req.params.id), requireRequestAuth(req).userId));
 }));
 
 router.get("/config", handler(async (_req, res) => {
