@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+const routes=await readFile(new URL("../src/routes/sweepscout.ts",import.meta.url),"utf8");
+const scheduler=await readFile(new URL("../src/domain/alerts/scheduler.ts",import.meta.url),"utf8");
+const service=await readFile(new URL("../src/domain/alerts/service.ts",import.meta.url),"utf8");
+const repository=await readFile(new URL("../src/domain/alerts/repository.ts",import.meta.url),"utf8");
+test("Phase 9 customer mutations derive identity from authenticated request context",()=>{for(const route of ["/alerts","/alerts/preferences","/custom-scanners","/custom-scanners/:id/run"])assert.ok(routes.includes(route));assert.ok((routes.match(/requireRequestAuth\(req\)/g)??[]).length>=20);});
+test("custom scanning composes approved source scanner and central Pilot Credit service",()=>{assert.match(service,/SourceScanner/);assert.match(service,/withPilotCredits/);assert.match(service,/operation:"custom_scan"/);assert.match(service,/approvedSources/);assert.match(service,/matchCount\(userId,profile\.filters,profile\.source_ids\)/);assert.match(repository,/count_custom_scan_matches/);});
+test("notification scheduler and paid email remain explicitly disabled by default",()=>{assert.match(scheduler,/PLAYPACKPILOT_ALERTS_ENABLED!=="true"/);assert.match(service,/configuredEmailProvider/);});

@@ -19,6 +19,7 @@ import SettingsPage from "@/pages/settings";
 import AdminPage from "@/pages/admin";
 import BillingPage from "@/pages/billing";
 import PricingPage from "@/pages/pricing";
+import AlertsPage from "@/pages/alerts";
 import NotFound from "@/pages/not-found";
 import OnboardingPage from "@/pages/onboarding";
 import { AuthCallbackPage, ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage } from "@/pages/auth";
@@ -64,6 +65,7 @@ function Router() {
       <Route path="/dashboard/reports">{() => <ProtectedRoute><ReportsPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/settings">{() => <ProtectedRoute><SettingsPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/billing">{() => <ProtectedRoute><BillingPage /></ProtectedRoute>}</Route>
+      <Route path="/dashboard/alerts">{() => <ProtectedRoute><AlertsPage /></ProtectedRoute>}</Route>
       <Route path="/dashboard/admin">{() => <ProtectedRoute><AdminPage /></ProtectedRoute>}</Route>
 
       <Route path="/scoring">{() => <ProtectedRoute><ScoringPage /></ProtectedRoute>}</Route>
@@ -83,6 +85,7 @@ function Router() {
       <Route path="/roi">{() => <Redirect to="/dashboard/roi" />}</Route>
       <Route path="/reports">{() => <Redirect to="/dashboard/reports" />}</Route>
       <Route path="/settings">{() => <Redirect to="/dashboard/settings" />}</Route>
+      <Route path="/alerts">{() => <Redirect to="/dashboard/alerts" />}</Route>
 
       <Route component={NotFound} />
     </Switch>

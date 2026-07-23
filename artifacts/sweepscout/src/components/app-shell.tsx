@@ -16,6 +16,7 @@ const nav: Array<{ href: string; label: string; description: string; icon: NavIc
   { href: "/dashboard/entries", label: "Mission Log", description: "Entered and skipped tracking", icon: "clipboard" },
   { href: "/dashboard/daily", label: "Flight Plan", description: "Daily schedule and reminders", icon: "calendar" },
   { href: "/dashboard/assistant", label: "Co-Pilot", description: "AI research assistant", icon: "assistant" },
+  { href: "/dashboard/alerts", label: "Alerts & Scans", description: "Digests, reminders, and custom monitoring", icon: "alerts" },
   { href: "/dashboard/discovery", label: "Source Radar", description: "Approved discovery jobs", icon: "database" },
   { href: "/dashboard/imports", label: "Manual Intake", description: "Administrator imports", icon: "import" },
   { href: "/dashboard/spam-sources", label: "Risk Signals", description: "Source and inbox risk", icon: "mail" },

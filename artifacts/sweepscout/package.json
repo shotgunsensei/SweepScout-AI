@@ -7,8 +7,9 @@
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
-    "test": "node --test ./test/radar-ui-contract.test.mjs",
+    "test": "node --test ./test/*-contract.test.mjs",
     "test:browser": "node ./test/radar-browser-smoke.mjs",
+    "test:browser:alerts": "node ./test/alerts-browser-smoke.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

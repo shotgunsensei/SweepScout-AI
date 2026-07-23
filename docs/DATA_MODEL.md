@@ -98,9 +98,14 @@ run through one service and lock the owning account/ledger scope.
 ## Notifications and operations
 
 - `notifications`: user, type, payload, dedupe key, read state.
+- `notification_preferences`: in-app and email consent, digest/category
+  preferences, unsubscribe timestamp.
 - `notification_deliveries`: channel, provider ID, attempt/status/error.
-- `digest_schedules`: preference, timezone, next run.
+- `digest_runs`: duplicate-safe daily/weekly delivery windows, item count,
+  provider failure, completion.
 - `custom_scanners`: approved filters/source scope, plan limit, cadence.
+- `custom_scan_runs`: scheduled time, exact source scope, results, errors, and
+  Pilot Credit idempotency reference.
 - `audit_logs`: actor, action, target, before/after, reason, request correlation.
 - `feature_flags`: controlled rollout and emergency disable.
 

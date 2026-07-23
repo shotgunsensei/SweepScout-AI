@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { startInboxMonitoring } from "@/lib/services/inbox-monitor";
 import { startRulesChangeMonitoring } from "@/lib/services/rules-change-monitor";
 import { startSourceScannerScheduler } from "@/lib/scanner/scheduler";
+import { startAlertsScheduler } from "@/lib/alerts";
 
 const rawPort = process.env["PORT"];
 
@@ -32,4 +33,5 @@ app.listen(port, (err) => {
     logger.warn({ err }, "Rules-change monitoring did not start");
   });
   startSourceScannerScheduler();
+  startAlertsScheduler();
 });

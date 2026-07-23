@@ -58,6 +58,7 @@ import { runQueuedDiscoveryEnrichment, undoAdministrativeMerge } from "@/lib/enr
 import { requireRequestAuth } from "@/lib/auth/session";
 import { parseRadarFilters, SupabaseRadarRepository } from "@/lib/radar";
 import { PersonalizationRepository } from "@/lib/personalization";
+import { AlertsRepository, alertsSummary, createCustomScanner, runCustomScanner, saveAlertPreferences, updateCustomScanner } from "@/lib/alerts";
 
 const router: IRouter = Router();
 
@@ -283,6 +284,40 @@ router.get("/personal/calendar.ics", handler(async (req, res) => {
   const calendar = await new PersonalizationRepository().calendar(auth.userId);
   res.type("text/calendar").setHeader("Content-Disposition", 'attachment; filename="play-pack-pilot-missions.ics"');
   res.send(calendar);
+}));
+
+router.get("/alerts", handler(async (req, res) => {
+  ok(res, await alertsSummary(requireRequestAuth(req).userId));
+}));
+
+router.put("/alerts/preferences", handler(async (req, res) => {
+  ok(res, await saveAlertPreferences(requireRequestAuth(req).userId, req.body ?? {}));
+}));
+
+router.post("/alerts/:id/read", handler(async (req, res) => {
+  ok(res, await new AlertsRepository().markRead(requireRequestAuth(req).userId, String(req.params.id)));
+}));
+
+router.post("/alerts/read-all", handler(async (req, res) => {
+  ok(res, await new AlertsRepository().markRead(requireRequestAuth(req).userId));
+}));
+
+router.post("/custom-scanners", handler(async (req, res) => {
+  ok(res, await createCustomScanner(requireRequestAuth(req).userId, req.body ?? {}), 201);
+}));
+
+router.put("/custom-scanners/:id", handler(async (req, res) => {
+  ok(res, await updateCustomScanner(requireRequestAuth(req).userId, String(req.params.id), req.body ?? {}));
+}));
+
+router.delete("/custom-scanners/:id", handler(async (req, res) => {
+  ok(res, await new AlertsRepository().deleteScanner(requireRequestAuth(req).userId, String(req.params.id)));
+}));
+
+router.post("/custom-scanners/:id/run", handler(async (req, res) => {
+  const auth=requireRequestAuth(req);
+  const supplied=typeof req.headers["idempotency-key"]==="string"?req.headers["idempotency-key"].trim():"";
+  ok(res, await runCustomScanner(auth.userId,String(req.params.id),{idempotencyKey:`custom-scan:${auth.userId}:${String(req.params.id)}:${(supplied||randomUUID()).replace(/[^a-zA-Z0-9._:-]/g,"-").slice(0,160)}`}),202);
 }));
 
 router.get("/tenant", handler(async (_req, res) => {

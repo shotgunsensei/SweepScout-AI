@@ -18,7 +18,7 @@ exists; its server-side behavior and persistence must work.
 | 6 | Radar and opportunity detail | Existing data UI is reusable but needs real normalized queries |
 | 7 | Hangar, Mission Log, personalization | Manual entry code reusable; user isolation and save model missing |
 | 8 | Subscriptions and Pilot Credits | Legacy billing must be replaced |
-| 9 | Alerts, digests, custom scans | Rules/inbox alerts reusable; delivery/scheduler missing |
+| 9 | Alerts, digests, custom scans | Complete: duplicate-safe alerts, opt-in email digests, server scheduler, approved-source scans, plan limits, and Pilot Credit enforcement |
 | 10 | Administration and operations | Partial UI/audit concepts; role and operations controls incomplete |
 | 11 | Security, privacy, policies | Required after the request-context and scanner changes |
 | 12 | E2E and deployment readiness | Cannot be claimed until prior gates pass |
@@ -58,3 +58,18 @@ Audit date: 2026-07-22.
 - Neither supplied asset was previously stored in the repository.
 - Safe baseline validation and post-change results are recorded in the commit
   handoff rather than overstated here.
+
+## Phase 9 validation record
+
+Implementation date: 2026-07-23.
+
+- Migration `0007_alerts_digests_custom_scans.sql` adds user-owned notifications,
+  read-only RLS, channel delivery state, digest runs, scanner profiles, scan-run
+  audit history, duplicate prevention, and safe concurrent scanner claims.
+- Email remains explicit opt-in and disabled until both the scheduler and the
+  Resend transport are configured server-side.
+- Custom scans use only policy-approved source adapters, are limited by paid
+  plan, consume the central Pilot Credit ledger, and refund all-source failures
+  idempotently.
+- API, database, UI contract, production-build, clean PostgreSQL migration, and
+  mobile/desktop browser gates are recorded in the Phase 9 commit handoff.

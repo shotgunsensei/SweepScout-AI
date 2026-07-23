@@ -1,5 +1,6 @@
 import {
   Bot,
+  BellRing,
   ClipboardCheck,
   CalendarCheck2,
   Database,
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 const icons = {
   assistant: Bot,
+  alerts: BellRing,
   calendar: CalendarCheck2,
   clipboard: ClipboardCheck,
   database: Database,
