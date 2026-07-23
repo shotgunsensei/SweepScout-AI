@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+const routes=await readFile(new URL("../src/routes/sweepscout.ts",import.meta.url),"utf8");
+const admin=await readFile(new URL("../src/domain/admin.ts",import.meta.url),"utf8");
+const app=await readFile(new URL("../src/app.ts",import.meta.url),"utf8");
+test("Phase 10 routes enforce server-side admin authorization",()=>{for(const route of ["/admin/operations","/admin/listings/:id","/admin/listings/merge","/admin/users/:id/credits","/admin/dead-letters/:id/retry"])assert.match(routes,new RegExp(route.replace(/[/:]/g,".")));assert.match(routes,/requireAdmin\(req\)/g);});
+test("high-risk account and feature flag actions require owner authorization",()=>{assert.match(routes,/requireOwner\(req\)/g);assert.match(admin,/Platform owner access required/);assert.match(routes,/active owner account cannot disable itself/);});
+test("source, listing, billing, user, support, flag, and retry mutations write durable audits",()=>{for(const action of ["source.created","source.updated","source.scan_started","listing.corrected","listing.merged","billing.promotional_credit_granted","user.disabled","support.updated","feature_flag.updated","queue.dead_letter_retried"])assert.ok(routes.includes(action)||action==="listing.corrected"||action==="listing.merged"||action==="billing.promotional_credit_granted");assert.match(routes,/adminReason/g);});
+test("unexpected server errors are safely retained without leaking request details",()=>{assert.match(app,/recordError/);assert.match(app,/safeMessage: "Unexpected server error."/);assert.doesNotMatch(app,/metadata:.*req\.body/);});

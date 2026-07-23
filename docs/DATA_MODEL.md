@@ -108,6 +108,11 @@ run through one service and lock the owning account/ledger scope.
   Pilot Credit idempotency reference.
 - `audit_logs`: actor, action, target, before/after, reason, request correlation.
 - `feature_flags`: controlled rollout and emergency disable.
+- `admin_audit_logs`: immutable actor, action, target, before/after state,
+  reason, correlation ID, timestamp.
+- `support_requests`: user request, priority, status, assignment, resolution.
+- `application_errors`: redacted route/error metadata for recent operations
+  health; never request bodies or stack traces.
 
 ## Existing-data migration map
 

@@ -19,7 +19,7 @@ exists; its server-side behavior and persistence must work.
 | 7 | Hangar, Mission Log, personalization | Manual entry code reusable; user isolation and save model missing |
 | 8 | Subscriptions and Pilot Credits | Legacy billing must be replaced |
 | 9 | Alerts, digests, custom scans | Complete: duplicate-safe alerts, opt-in email digests, server scheduler, approved-source scans, plan limits, and Pilot Credit enforcement |
-| 10 | Administration and operations | Partial UI/audit concepts; role and operations controls incomplete |
+| 10 | Administration and operations | Complete: normalized operations dashboard, source/listing/user/billing controls, provider health, dead letters, feature flags, and immutable audits |
 | 11 | Security, privacy, policies | Required after the request-context and scanner changes |
 | 12 | E2E and deployment readiness | Cannot be claimed until prior gates pass |
 
@@ -73,3 +73,18 @@ Implementation date: 2026-07-23.
   idempotently.
 - API, database, UI contract, production-build, clean PostgreSQL migration, and
   mobile/desktop browser gates are recorded in the Phase 9 commit handoff.
+
+## Phase 10 validation record
+
+Implementation date: 2026-07-23.
+
+- Migration `0008_administration_operations.sql` adds append-only admin audits,
+  feature flags, support review, safe application errors, signed credit
+  adjustments, and transactional manual merge/reversal functions.
+- Every Phase 10 route derives the admin or owner role and actor ID from the
+  authenticated server session. Account access and feature flags require owner.
+- Sources, listing evidence and decisions, user billing and credit history,
+  queue/provider health, dead letters, support, and audit evidence are available
+  through the protected Platform Operations console.
+- API, database, UI, clean-migration, production-build, and browser validation
+  results are recorded in the Phase 10 commit handoff.

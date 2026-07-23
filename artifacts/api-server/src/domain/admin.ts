@@ -3,6 +3,7 @@ import { requireRequestAuth } from "@/lib/auth/session";
 import type { EntryLog } from "@/lib/types";
 
 export type AdminSession = {
+  userId: string;
   mode: "local" | "supabase";
   label: string;
   role: "owner" | "admin";
@@ -19,10 +20,17 @@ export async function getAdminSession(req: Request): Promise<AdminSession | null
   const auth = requireRequestAuth(req);
   if (auth.platformRole !== "owner" && auth.platformRole !== "admin") return null;
   return {
+    userId: auth.userId,
     mode: auth.mode,
     label: auth.email,
     role: auth.platformRole,
   };
+}
+
+export async function requireOwner(req: Request) {
+  const session = await requireAdmin(req);
+  if (session.role !== "owner") throw new AdminAccessError("Platform owner access required.");
+  return session;
 }
 
 export async function requireAdmin(req: Request) {

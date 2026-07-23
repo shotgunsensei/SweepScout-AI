@@ -10,6 +10,7 @@
     "test": "node --test ./test/*-contract.test.mjs",
     "test:browser": "node ./test/radar-browser-smoke.mjs",
     "test:browser:alerts": "node ./test/alerts-browser-smoke.mjs",
+    "test:browser:operations": "node ./test/operations-browser-smoke.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { getStore } from "@/lib/storage/store";
 import { getAppConfig } from "@/lib/env";
-import { getAdminSession, requireAdmin, entriesToCsv } from "@/lib/admin";
+import { getAdminSession, requireAdmin, requireOwner, entriesToCsv } from "@/lib/admin";
 import { writeAuditLog } from "@/lib/audit";
 import { getRegistrableDomain } from "@/lib/discovery/url";
 import { scoreSweepstake } from "@/lib/scoring";
@@ -54,11 +54,12 @@ import {
   runRegisteredSource,
   updateRegisteredSource,
 } from "@/lib/scanner/admin";
-import { runQueuedDiscoveryEnrichment, undoAdministrativeMerge } from "@/lib/enrichment/admin";
+import { runQueuedDiscoveryEnrichment } from "@/lib/enrichment/admin";
 import { requireRequestAuth } from "@/lib/auth/session";
 import { parseRadarFilters, SupabaseRadarRepository } from "@/lib/radar";
 import { PersonalizationRepository } from "@/lib/personalization";
 import { AlertsRepository, alertsSummary, createCustomScanner, runCustomScanner, saveAlertPreferences, updateCustomScanner } from "@/lib/alerts";
+import { OperationsRepository, actor as adminActor, adminReason, adjustCredits as adminAdjustCredits, correctListing, decideListing, mergeListings, undoMerge } from "@/lib/operations";
 
 const router: IRouter = Router();
 
@@ -159,6 +160,30 @@ router.get("/admin/access", handler(async (req, res) => {
   ok(res, { authorized: true, admin });
 }));
 
+router.get("/admin/operations", handler(async (req, res) => {
+  const admin = await requireAdmin(req);
+  ok(res, { admin, ...(await new OperationsRepository().dashboard()) });
+}));
+
+router.get("/admin/listings/:id", handler(async (req, res) => {
+  await requireAdmin(req);
+  const listing = await new OperationsRepository().listing(String(req.params.id));
+  if (!listing) return fail(res, "Listing was not found.", 404);
+  ok(res, listing);
+}));
+
+router.put("/admin/listings/:id", handler(async (req, res) => {
+  ok(res, await correctListing(adminActor(await requireAdmin(req), req), String(req.params.id), req.body ?? {}));
+}));
+
+router.post("/admin/listings/:id/decision", handler(async (req, res) => {
+  ok(res, await decideListing(adminActor(await requireAdmin(req), req), String(req.params.id), req.body ?? {}));
+}));
+
+router.post("/admin/listings/merge", handler(async (req, res) => {
+  ok(res, await mergeListings(adminActor(await requireAdmin(req), req), req.body ?? {}));
+}));
+
 router.get("/admin/sources", handler(async (req, res) => {
   await requireAdmin(req);
   ok(res, await listRegisteredSources());
@@ -175,14 +200,55 @@ router.get("/admin/discovered-urls", handler(async (req, res) => {
 }));
 
 router.post("/admin/discovered-urls/:id/enrich", handler(async (req, res) => {
-  await requireAdmin(req);
-  const id=String(req.params.id);
-  ok(res, await meteredAction(req,"promotion_deep_analysis",id,()=>runQueuedDiscoveryEnrichment(id)), 202);
+  const admin=adminActor(await requireAdmin(req),req),reason=adminReason(req.body?.reason),id=String(req.params.id);
+  const result=await meteredAction(req,"promotion_deep_analysis",id,()=>runQueuedDiscoveryEnrichment(id));
+  await new OperationsRepository().audit(admin,{action:"listing.enrichment_started",targetType:"discovered_url",targetId:id,after:result,reason});
+  ok(res,result,202);
 }));
 
 router.post("/admin/merges/:id/undo", handler(async (req, res) => {
+  ok(res, await undoMerge(adminActor(await requireAdmin(req), req), String(req.params.id), req.body ?? {}));
+}));
+
+router.get("/admin/users/:id", handler(async (req, res) => {
   await requireAdmin(req);
-  ok(res, await undoAdministrativeMerge(String(req.params.id), requireRequestAuth(req).userId));
+  ok(res, await new OperationsRepository().user(String(req.params.id)));
+}));
+
+router.post("/admin/users/:id/credits", handler(async (req, res) => {
+  ok(res, await adminAdjustCredits(adminActor(await requireAdmin(req), req), String(req.params.id), req.body ?? {}));
+}));
+
+router.post("/admin/users/:id/disable", handler(async (req, res) => {
+  const owner = adminActor(await requireOwner(req), req), repo = new OperationsRepository(), id = String(req.params.id);
+  if (id === owner.userId) return fail(res, "The active owner account cannot disable itself.", 422);
+  const reason = adminReason(req.body?.reason), before = await repo.user(id), after = await repo.disableUser(id, req.body?.disabled !== false);
+  await repo.audit(owner, { action: req.body?.disabled === false ? "user.enabled" : "user.disabled", targetType: "profile", targetId: id, before: before.profile, after, reason });
+  ok(res, after);
+}));
+
+router.put("/admin/support/:id", handler(async (req, res) => {
+  const admin = adminActor(await requireAdmin(req), req), repo = new OperationsRepository(), id = String(req.params.id);
+  const reason = adminReason(req.body?.reason ?? req.body?.resolution);
+  const after = await repo.updateSupport(id, req.body ?? {}, admin.userId);
+  await repo.audit(admin, { action: "support.updated", targetType: "support_request", targetId: id, after, reason });
+  ok(res, after);
+}));
+
+router.put("/admin/feature-flags/:key", handler(async (req, res) => {
+  const owner = adminActor(await requireOwner(req), req), repo = new OperationsRepository(), key = String(req.params.key);
+  const reason = adminReason(req.body?.reason);
+  const after = await repo.setFlag(key, req.body ?? {}, owner.userId);
+  await repo.audit(owner, { action: "feature_flag.updated", targetType: "feature_flag", targetId: key, after, reason });
+  ok(res, after);
+}));
+
+router.post("/admin/dead-letters/:id/retry", handler(async (req, res) => {
+  const admin = adminActor(await requireAdmin(req), req), repo = new OperationsRepository(), id = String(req.params.id);
+  const reason = adminReason(req.body?.reason);
+  const after = await repo.retryDeadLetter(id);
+  await repo.audit(admin, { action: "queue.dead_letter_retried", targetType: "source_scan_job", targetId: id, after, reason });
+  ok(res, after, 202);
 }));
 
 router.get("/config", handler(async (_req, res) => {
@@ -513,25 +579,30 @@ router.get("/admin/export/entries", handler(async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.post("/admin/sources", handler(async (req, res) => {
-  await requireAdmin(req);
-  ok(res, await registerSource(req.body ?? {}), 201);
+  const admin = adminActor(await requireAdmin(req), req), reason = adminReason(req.body?.reason), created = await registerSource(req.body ?? {});
+  await new OperationsRepository().audit(admin, { action: "source.created", targetType: "source", targetId: String(created.id), after: created, reason });
+  ok(res, created, 201);
 }));
 
 router.put("/admin/sources/:id", handler(async (req, res) => {
-  await requireAdmin(req);
-  ok(res, await updateRegisteredSource(String(req.params.id), req.body ?? {}));
+  const admin = adminActor(await requireAdmin(req), req), repo = new OperationsRepository(), id = String(req.params.id), reason = adminReason(req.body?.reason), before = await repo.source(id), after = await updateRegisteredSource(id, req.body ?? {});
+  await repo.audit(admin, { action: "source.updated", targetType: "source", targetId: id, before, after, reason });
+  ok(res, after);
 }));
 
 router.post("/admin/sources/:id/run", handler(async (req, res) => {
-  await requireAdmin(req);
-  ok(res, await runRegisteredSource(String(req.params.id)), 202);
+  const admin = adminActor(await requireAdmin(req), req), repo = new OperationsRepository(), id = String(req.params.id), reason = adminReason(req.body?.reason), result = await runRegisteredSource(id);
+  await repo.audit(admin, { action: "source.scan_started", targetType: "source", targetId: id, after: result, reason });
+  ok(res, result, 202);
 }));
 
 router.put("/admin/discovered-urls/:id/review", handler(async (req, res) => {
-  await requireAdmin(req);
+  const admin = adminActor(await requireAdmin(req), req), repo = new OperationsRepository();
   const decision = req.body?.decision;
   if (decision !== "queue" && decision !== "reject") return fail(res, "Decision must be queue or reject.");
-  ok(res, await reviewDiscoveredUrl(String(req.params.id), decision));
+  const id = String(req.params.id), reason = adminReason(req.body?.reason), result = await reviewDiscoveredUrl(id, decision);
+  await repo.audit(admin, { action: `discovered_url.${decision}`, targetType: "discovered_url", targetId: id, after: result, reason });
+  ok(res, result);
 }));
 
 router.post("/discovery/run", handler(async (req, res) => {
@@ -958,19 +1029,21 @@ router.put("/settings", handler(async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.post("/admin/retry-extraction", handler(async (req, res) => {
-  await requireAdmin(req);
-  const id=String(req.body?.sweepstakeId??"");
-  ok(res,await meteredAction(req,"official_rules_extraction",id,()=>runRulesExtraction(id)));
+  const admin=adminActor(await requireAdmin(req),req),reason=adminReason(req.body?.reason),id=String(req.body?.sweepstakeId??"");
+  const result=await meteredAction(req,"official_rules_extraction",id,()=>runRulesExtraction(id));
+  await new OperationsRepository().audit(admin,{action:"listing.rules_extraction_retried",targetType:"sweepstakes",targetId:id,after:result,reason});
+  ok(res,result);
 }));
 
 router.post("/admin/rescore", handler(async (req, res) => {
-  await requireAdmin(req);
-  const id=String(req.body?.sweepstakeId??"");
-  ok(res,await meteredAction(req,"personalized_fit",id,()=>rescoreSweepstakeById(id)));
+  const admin=adminActor(await requireAdmin(req),req),reason=adminReason(req.body?.reason),id=String(req.body?.sweepstakeId??"");
+  const result=await meteredAction(req,"personalized_fit",id,()=>rescoreSweepstakeById(id));
+  await new OperationsRepository().audit(admin,{action:"listing.rescored",targetType:"sweepstakes",targetId:id,after:result,reason});
+  ok(res,result);
 }));
 
 router.post("/admin/block-domain", handler(async (req, res) => {
-  await requireAdmin(req);
+  const admin=adminActor(await requireAdmin(req),req),reason=adminReason(req.body?.reason);
   const store = await getStore();
   const domain = normalizeDomainInput(String(req.body?.domain ?? ""));
   const saved = await store.saveBlockedDomain({
@@ -989,6 +1062,7 @@ router.post("/admin/block-domain", handler(async (req, res) => {
     message: `Domain ${domain} was added to the blocklist from the admin panel.`,
     metadata: { domain },
   });
+  await new OperationsRepository().audit(admin,{action:"source.domain_blocked",targetType:"blocked_domain",targetId:domain,after:saved,reason});
   ok(res, saved);
 }));
 

@@ -111,6 +111,12 @@ export type AlertPreferences = { inAppEnabled:boolean;emailEnabled:boolean;daily
 export type CustomScanner = { id:string;name:string;filters:Record<string,unknown>;source_ids:string[];cadence_minutes:number;enabled:boolean;next_run_at:string;last_run_at:string|null };
 export type CustomScanRun = { id:string;custom_scanner_id:string;status:string;match_count:number;result_summary:Record<string,unknown>;error_message:string|null;created_at:string;completed_at:string|null };
 export type AlertsSummary = { notifications:AlertNotification[];unreadCount:number;preferences:AlertPreferences;customScanners:CustomScanner[];customScanRuns:CustomScanRun[];approvedSources:Array<{id:string;name:string;base_url:string;attribution_text:string|null}>;emailProvider:"resend"|"disabled";planKey:BillingPlanKey;customScanPolicy:{enabled:boolean;maxProfiles:number;monthlyRuns:number;minimumCadenceMinutes:number};customScanCost:number;creditBalance:number };
+export type AdminOperations = {
+  admin: { userId:string;mode:"local"|"supabase";label:string;role:"admin"|"owner" };
+  metrics: Record<"activeUsers"|"paidSubscribers"|"mrrCents"|"aiRuns"|"aiTokens"|"aiCostUsd"|"pilotCreditsConsumed"|"activeSources"|"failedScans"|"listingsDiscovered"|"pendingReview"|"duplicateCandidates"|"highRiskListings"|"webhookFailures"|"queueFailures"|"recentApplicationErrors",number>;
+  health: Record<string,{status:"healthy"|"degraded"|"disabled";failures:number;configured:boolean}>;
+  users:Array<Record<string,any>>;creditLedger:Array<Record<string,any>>;sources:Array<Record<string,any>>;sourceFailureRates:Array<{sourceId:string;sampleSize:number;failures:number;rate:number}>;scanJobs:Array<Record<string,any>>;failedUrls:Array<Record<string,any>>;listings:Array<Record<string,any>>;reviewFlags:Array<Record<string,any>>;billingFailures:Array<Record<string,any>>;applicationErrors:Array<Record<string,any>>;supportRequests:Array<Record<string,any>>;auditLogs:Array<Record<string,any>>;featureFlags:Array<Record<string,any>>;deadLetters:Array<Record<string,any>>;
+};
 export type OpportunityDetail = RadarOpportunity & {
   evidence: Array<{ field_name: string; field_value: unknown; confidence: number | string; source_reference: string; evidence_text: string; evidence_location: unknown; authoritative: boolean; extracted_at: string }>;
   safety: string[];

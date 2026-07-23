@@ -23,6 +23,7 @@ async function buildAll() {
       personalization: path.resolve(artifactDir, "src/domain/personalization/index.ts"),
       billing: path.resolve(artifactDir, "src/domain/billing/index.ts"),
       alerts: path.resolve(artifactDir, "src/domain/alerts/index.ts"),
+      operations: path.resolve(artifactDir, "src/domain/operations/index.ts"),
     },
     platform: "node",
     bundle: true,

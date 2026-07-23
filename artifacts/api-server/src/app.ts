@@ -8,6 +8,7 @@ import { AdminAccessError } from "@/lib/admin";
 import { AppConfigError } from "@/lib/env";
 import { AuthenticationError, AuthenticationUnavailableError } from "@/lib/auth/session";
 import { InsufficientCreditsError } from "@/lib/billing";
+import { OperationsRepository } from "@/lib/operations";
 
 const app: Express = express();
 if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
@@ -54,7 +55,7 @@ app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 app.use("/api", router);
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
   const message = err instanceof Error ? err.message : "Unexpected server error.";
   let status = process.env.NODE_ENV === "production" ? 500 : 400;
   if (err instanceof AdminAccessError) status = 403;
@@ -63,6 +64,15 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   else if (err instanceof AppConfigError) status = 422;
   else if (err instanceof InsufficientCreditsError) status = 402;
   logger.error({ err }, "request failed");
+  if (status >= 500 && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    void new OperationsRepository().recordError({
+      correlationId: String((req as Request & { id?: string }).id ?? "unknown"),
+      route: req.path,
+      method: req.method,
+      errorName: err instanceof Error ? err.name : "UnknownError",
+      safeMessage: "Unexpected server error.",
+    });
+  }
   const userSafe =
     err instanceof AdminAccessError ||
     err instanceof AuthenticationUnavailableError ||
