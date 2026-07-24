@@ -33,9 +33,10 @@ export function OpportunityCard({ item, onSave, onHide, busy }: { item: RadarOpp
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line/70 pt-4">
         <Link href={`/dashboard/sweepstakes/${item.id}`} className="rounded-md bg-reward px-4 py-2 text-sm font-bold text-[#111827]">View details</Link>
-        <span className="text-xs text-muted">Source confidence {item.sourceConfidenceScore}/100 · {item.popularity} saves</span>
-        <a href={item.officialUrl} target="_blank" rel="noopener noreferrer external" className="ml-auto inline-flex items-center gap-1 text-sm text-accent">Official sweepstakes <ExternalLink size={14} /></a>
+        <span className="text-xs text-muted">Source: {item.sources[0]?.attribution||item.sources[0]?.name||"attribution pending"} · verified {formatDate(item.lastVerifiedAt)}</span>
+        <a href={item.officialUrl} target="_blank" rel="noopener noreferrer external" referrerPolicy="no-referrer" className="ml-auto inline-flex items-center gap-1 text-sm text-accent">Official sponsor promotion <ExternalLink size={14} /></a>
       </div>
+      <p className="mt-3 text-xs leading-5 text-muted">By {item.sponsor}. Play Pack Pilot is not the sponsor or promotion administrator. Source confidence {item.sourceConfidenceScore}/100 · {item.popularity} saves.</p>
     </Panel>
   );
 }

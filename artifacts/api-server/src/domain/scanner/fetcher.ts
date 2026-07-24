@@ -57,11 +57,13 @@ export class CompliantSourceFetcher implements SourceFetcher {
 
         const contentLength = Number(response.headers.get("content-length") ?? 0);
         if (contentLength > MAX_RESPONSE_BYTES) throw new SourceResponseError("Source response exceeds the 2 MB safety limit.");
+        const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+        if (contentType && !isSupportedContentType(contentType)) throw new SourceResponseError(`Unsupported source content type: ${contentType}.`);
         const body = await readLimitedBody(response);
         return {
           url: target.toString(),
           status: response.status,
-          contentType: response.headers.get("content-type") ?? "",
+          contentType,
           body,
           etag: response.headers.get("etag"),
           lastModified: response.headers.get("last-modified"),
@@ -90,7 +92,10 @@ export class CompliantSourceFetcher implements SourceFetcher {
   }
 
   private async assertPublicResolution(hostname: string) {
-    if (isIP(hostname)) return;
+    if (isIP(hostname)) {
+      if (isPrivateAddress(hostname)) throw new SourcePolicyError("Source address is private or reserved.");
+      return;
+    }
     let addresses: Array<{ address: string }>;
     try {
       addresses = await this.resolveHost(hostname);
@@ -116,6 +121,8 @@ export function safePublicUrl(value: string) {
 
 function isPrivateAddress(hostname: string) {
   if (!isIP(hostname)) return false;
+  const mapped = mappedIpv4(hostname);
+  if (mapped) return isPrivateAddress(mapped);
   if (hostname === "::1" || hostname === "0.0.0.0") return true;
   if (hostname.startsWith("10.") || hostname.startsWith("127.") || hostname.startsWith("169.254.") || hostname.startsWith("192.168.")) return true;
   const parts = hostname.split(".").map(Number);
@@ -125,7 +132,32 @@ function isPrivateAddress(hostname: string) {
   if (parts.length === 4 && parts[0] === 192 && parts[1] === 0) return true;
   if (parts.length === 4 && parts[0] === 198 && (parts[1] === 18 || parts[1] === 19)) return true;
   const ipv6 = hostname.toLowerCase();
-  return ipv6 === "::" || ipv6.startsWith("fc") || ipv6.startsWith("fd") || ipv6.startsWith("fe80:") || ipv6.startsWith("::ffff:127.");
+  return ipv6 === "::" || ipv6.startsWith("fc") || ipv6.startsWith("fd") || ipv6.startsWith("fe80:") || ipv6.startsWith("ff") || ipv6.startsWith("fec") || ipv6.startsWith("fed") || ipv6.startsWith("fee") || ipv6.startsWith("fef") || ipv6.startsWith("2001:db8:") || ipv6.startsWith("2001:2:") || ipv6.startsWith("100:");
+}
+
+function mappedIpv4(address: string) {
+  const value = address.toLowerCase();
+  if (!value.startsWith("::ffff:")) return null;
+  const tail = value.slice(7);
+  if (isIP(tail) === 4) return tail;
+  const pieces = tail.split(":");
+  if (pieces.length !== 2 || pieces.some((piece) => !/^[0-9a-f]{1,4}$/.test(piece))) return null;
+  const high = Number.parseInt(pieces[0]!, 16);
+  const low = Number.parseInt(pieces[1]!, 16);
+  return `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
+}
+
+function isSupportedContentType(contentType: string) {
+  return new Set([
+    "application/json",
+    "application/ld+json",
+    "application/rss+xml",
+    "application/atom+xml",
+    "application/xml",
+    "text/xml",
+    "text/html",
+    "text/plain",
+  ]).has(contentType);
 }
 
 async function readLimitedBody(response: Response) {

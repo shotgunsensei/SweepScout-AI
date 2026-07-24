@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
-import { Bell, Bot, Clock3, Inbox, LockKeyhole, ScrollText, SlidersHorizontal, Trash2, UserRound } from "lucide-react";
+import { Bell, Bot, Clock3, Download, Inbox, LockKeyhole, ScrollText, ShieldCheck, SlidersHorizontal, Trash2, UserRound } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { AppShell } from "@/components/app-shell";
 import { ErrorNotice, LoadingState, SectionHeader } from "@/components/dashboard-kit";
 import { Badge, Checkbox, PageHeader, Panel, SubmitButton, TextInput } from "@/components/ui";
@@ -40,7 +41,7 @@ type PersonalProfile = {
 function AccountProfilePanel() {
   const profile = useQuery({ queryKey: ["personal-profile"], queryFn: () => apiGet<PersonalProfile>("/auth/profile") });
   const save = useApiMutation<PersonalProfile>("/auth/profile", { method: "PUT" });
-  const deletion = useApiMutation<{ status: string; requestedAt: string }>("/auth/account-deletion");
+  const deletion = useApiMutation<{ status: string; requestedAt: string; scheduledFor: string | null; retentionUntil: string | null }>("/auth/account-deletion");
   const [deletionReason, setDeletionReason] = useState("");
   if (profile.isLoading) return <LoadingState title="Loading private profile" />;
   if (!profile.data) return profile.isError ? <ErrorNotice title="Unable to load private profile" body="Your authenticated profile could not be loaded." /> : null;
@@ -65,6 +66,12 @@ function AccountProfilePanel() {
         <Field label="Birth date"><TextInput name="birthDate" type="date" defaultValue={profile.data.birthDate ?? ""} /></Field>
         <div className="flex items-end"><SubmitButton disabled={save.isPending}>{save.isPending ? "Saving…" : "Save private profile"}</SubmitButton></div>
       </form>
+      <div className="mt-6 rounded-xl border border-accent/25 bg-accent/5 p-4">
+        <h3 className="flex items-center gap-2 font-semibold text-foreground"><ShieldCheck size={17} /> Privacy controls</h3>
+        <p className="mt-2 text-sm leading-6 text-muted">Download a machine-readable copy of account, activity, notification, subscription, and Pilot Credit records. Authentication credentials, session tokens, and server secrets are excluded.</p>
+        <div className="mt-3 flex flex-wrap gap-3"><a href="/api/auth/data-export" download className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-accent/40 px-4 text-sm font-semibold text-accent"><Download size={16}/>Download my data</a><Link href="/policies/privacy" className="inline-flex min-h-10 items-center rounded-lg border border-line px-4 text-sm">Privacy Policy</Link><Link href="/policies" className="inline-flex min-h-10 items-center rounded-lg border border-line px-4 text-sm">Trust center</Link></div>
+        <p className="mt-3 text-xs leading-5 text-muted">Only essential authentication, refresh, and CSRF-protection cookies are enabled. Optional analytics or advertising cookies are not configured.</p>
+      </div>
       <div className="mt-6 rounded-xl border border-danger/25 bg-danger/5 p-4">
         <h3 className="flex items-center gap-2 font-semibold text-foreground"><Trash2 size={17} /> Account deletion request</h3>
         <p className="mt-2 text-sm leading-6 text-muted">Request an operator-reviewed deletion. Billing, audit, and legal retention checks happen before destructive removal.</p>

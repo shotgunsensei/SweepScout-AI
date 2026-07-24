@@ -23,6 +23,12 @@ network targets, non-standard ports, responses over 2 MB, and source endpoints
 outside the registered origin. API keys and other secrets are prohibited in
 database source configuration.
 
+Responses must also use an approved text, HTML, XML/feed, JSON, or JSON-LD
+content type. Parsing is capped at 500 candidates, 100 JSON-LD blocks, and 20
+structured-data nesting levels. URLs, titles, and summaries are bounded before
+storage. Production network policy must independently deny private, link-local,
+reserved, and cloud-metadata egress to mitigate DNS rebinding.
+
 Each discovery preserves its registered source, scan job, original URL,
 canonical URL, content hash, first/last-seen timestamps, and attribution policy.
 New or changed URLs remain reviewable; queueing a URL does not enter a promotion

@@ -20,7 +20,7 @@ exists; its server-side behavior and persistence must work.
 | 8 | Subscriptions and Pilot Credits | Legacy billing must be replaced |
 | 9 | Alerts, digests, custom scans | Complete: duplicate-safe alerts, opt-in email digests, server scheduler, approved-source scans, plan limits, and Pilot Credit enforcement |
 | 10 | Administration and operations | Complete: normalized operations dashboard, source/listing/user/billing controls, provider health, dead letters, feature flags, and immutable audits |
-| 11 | Security, privacy, policies | Required after the request-context and scanner changes |
+| 11 | Security, privacy, policies | Complete: API and scanner hardening, authenticated export, deletion retention hooks, attribution, and public attorney-review policy drafts |
 | 12 | E2E and deployment readiness | Cannot be claimed until prior gates pass |
 
 ## Dependency order
@@ -88,3 +88,20 @@ Implementation date: 2026-07-23.
   through the protected Platform Operations console.
 - API, database, UI, clean-migration, production-build, and browser validation
   results are recorded in the Phase 10 commit handoff.
+
+## Phase 11 validation record
+
+Implementation date: 2026-07-23.
+
+- Migration `0009_security_privacy_policies.sql` adds immutable privacy-export
+  evidence plus idempotent deletion-request scheduling and retention hooks.
+- API hardening adds security headers, JSON content enforcement, sanitized
+  production errors, server-derived throttling keys, and general authenticated
+  request limits.
+- Scanner responses, content types, candidates, structured-data depth, and
+  stored strings are bounded in addition to the existing source-policy, SSRF,
+  origin, redirect, timeout, and response-size controls.
+- Users can export their own data, manage notification consent, request reviewed
+  deletion, and inspect essential-cookie and public policy disclosures.
+- Every opportunity card and detail preserves sponsor identity, official links,
+  source attribution, verification timing, and the non-sponsor boundary.

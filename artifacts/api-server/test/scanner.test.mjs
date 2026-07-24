@@ -82,7 +82,7 @@ test("exhausted transient failures transition a job to dead letter", async () =>
 });
 
 test("private, credentialed, and non-standard-port endpoints are blocked", () => {
-  for (const url of ["http://127.0.0.1/feed", "http://192.168.1.2/feed", "https://user:pass@example.com/feed", "https://example.com:8443/feed", "file:///tmp/feed"]) {
+  for (const url of ["http://127.0.0.1/feed", "http://192.168.1.2/feed", "http://[::ffff:7f00:1]/feed", "http://[2001:db8::1]/feed", "https://user:pass@example.com/feed", "https://example.com:8443/feed", "file:///tmp/feed"]) {
     assert.throws(() => safePublicUrl(url));
   }
 });
@@ -93,6 +93,17 @@ test("hostnames that resolve to private networks are blocked before transport", 
   const fetcher = new CompliantSourceFetcher(async () => { transported = true; return new Response(rssFixture); }, async () => {}, async () => [{ address: "10.20.30.40" }]);
   await assert.rejects(() => fetcher.fetch(source, source.baseUrl), /private or reserved/);
   assert.equal(transported, false);
+});
+
+test("binary source responses and oversized candidate sets are bounded", async () => {
+  const source = approvedSource();
+  const fetcher = new CompliantSourceFetcher(async () => new Response("binary", { status: 200, headers: { "content-type": "application/octet-stream" } }), async () => {}, async () => [{ address: "93.184.216.34" }]);
+  await assert.rejects(() => fetcher.fetch(source, source.baseUrl), /Unsupported source content type/);
+
+  const configured = approvedSource({ accessMethod: "admin_url", configuration: { urls: Array.from({ length: 700 }, (_, index) => `https://sponsor.example/promotion-${index}`) } });
+  const repository = new MemoryRepository(configured);
+  const summary = await new SourceScanner(repository).runSource(configured.id);
+  assert.equal(summary.discovered, 500);
 });
 
 function approvedSource(overrides = {}) {

@@ -117,14 +117,93 @@ export async function updatePersonalProfile(auth: AuthContext, input: PersonalPr
 }
 
 export async function requestAccountDeletion(auth: AuthContext, reason?: string) {
-  if (auth.mode === "local") return { status: "requested" as const, requestedAt: new Date().toISOString() };
-  const result = await getSupabaseServiceClient()
-    .from("account_deletion_requests")
-    .insert({ user_id: auth.userId, reason: cleanText(reason, 500) || null })
-    .select("status, requested_at")
-    .single();
+  if (auth.mode === "local") return { status: "requested" as const, requestedAt: new Date().toISOString(), scheduledFor: null, retentionUntil: null };
+  const result = await getSupabaseServiceClient().rpc("request_account_deletion", {
+    p_user_id: auth.userId,
+    p_reason: cleanText(reason, 500) || null,
+  });
   if (result.error) throw new Error("Unable to submit the account deletion request.");
-  return { status: result.data.status, requestedAt: result.data.requested_at };
+  const row = Array.isArray(result.data) ? result.data[0] : result.data;
+  return { status: row.status, requestedAt: row.requested_at, scheduledFor: row.scheduled_for, retentionUntil: row.retention_until };
+}
+
+export async function exportPersonalData(auth: AuthContext) {
+  const profile = await getPersonalProfile(auth);
+  if (auth.mode === "local") return {
+    generatedAt: new Date().toISOString(),
+    formatVersion: "2026-07-23",
+    account: profile,
+    activity: {},
+    communications: {},
+    billing: {},
+    privacy: { mode: "local-development", note: "Local compatibility data is not a production account record." },
+  };
+
+  const client = getSupabaseServiceClient();
+  const datasets = [
+    ["savedOpportunities", "user_saved_sweepstakes", "*"],
+    ["opportunityStatuses", "user_sweepstakes_status", "*"],
+    ["privateNotes", "user_sweepstakes_notes", "*"],
+    ["savedSearches", "user_search_profiles", "*"],
+    ["notifications", "notifications", "*"],
+    ["notificationPreferences", "notification_preferences", "*"],
+    ["customScanners", "custom_scanners", "*"],
+    ["customScanRuns", "custom_scan_runs", "*"],
+    ["digestRuns", "digest_runs", "id,kind,window_start,window_end,status,item_count,error_message,created_at,completed_at"],
+    ["billingCustomers", "billing_customers", "provider,provider_customer_id,created_at,updated_at"],
+    ["subscriptions", "subscriptions", "*"],
+    ["entitlements", "entitlements", "*"],
+    ["pilotCreditLedger", "credit_ledger", "*"],
+    ["billingEvents", "billing_events", "provider_event_id,event_type,status,received_at,processed_at"],
+    ["deletionRequests", "account_deletion_requests", "*"],
+    ["supportRequests", "support_requests", "*"],
+    ["organizationMemberships", "organization_memberships", "*"],
+  ] as const;
+  const results = await Promise.all(datasets.map(async ([key, table, columns]) => {
+    const result = await client.from(table).select(columns).eq("user_id", auth.userId).limit(5_000);
+    if (result.error) throw new Error(`Unable to export ${key}.`);
+    return [key, result.data ?? []] as const;
+  }));
+  const data = Object.fromEntries(results) as Record<string, unknown[]>;
+  const counts = Object.fromEntries(Object.entries(data).map(([key, rows]) => [key, rows.length]));
+  const audit = await client.from("privacy_export_events").insert({
+    user_id: auth.userId,
+    format_version: "2026-07-23",
+    record_counts: counts,
+    completed_at: new Date().toISOString(),
+  });
+  if (audit.error) throw new Error("Unable to record the privacy export.");
+  return {
+    generatedAt: new Date().toISOString(),
+    formatVersion: "2026-07-23",
+    account: profile,
+    activity: {
+      savedOpportunities: data.savedOpportunities,
+      opportunityStatuses: data.opportunityStatuses,
+      privateNotes: data.privateNotes,
+      savedSearches: data.savedSearches,
+      customScanners: data.customScanners,
+      customScanRuns: data.customScanRuns,
+    },
+    communications: {
+      notifications: data.notifications,
+      notificationPreferences: data.notificationPreferences,
+      digestRuns: data.digestRuns,
+      supportRequests: data.supportRequests,
+    },
+    billing: {
+      subscriptions: data.subscriptions,
+      entitlements: data.entitlements,
+      billingCustomers: data.billingCustomers,
+      pilotCreditLedger: data.pilotCreditLedger,
+      billingEvents: data.billingEvents,
+    },
+    privacy: {
+      deletionRequests: data.deletionRequests,
+      organizationMemberships: data.organizationMemberships,
+      note: "Authentication credentials, session tokens, and server secrets are never included.",
+    },
+  };
 }
 
 function normalizeInput(input: PersonalProfileInput): PersonalProfileInput {

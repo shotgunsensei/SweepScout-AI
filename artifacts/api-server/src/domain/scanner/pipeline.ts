@@ -50,10 +50,16 @@ export class SourceScanner {
       const warnings = [...result.warnings];
       for (const candidate of result.candidates) {
         try {
-          const canonicalUrl = normalizeDiscoveryUrl(candidate.url);
-          const contentHash = discoveryHash(candidate, canonicalUrl);
-          const outcome = await this.repository.upsertDiscoveredUrl({
+          const bounded = {
             ...candidate,
+            url: candidate.url.slice(0, 2_048),
+            title: candidate.title.slice(0, 500),
+            summary: candidate.summary.slice(0, 5_000),
+          };
+          const canonicalUrl = normalizeDiscoveryUrl(bounded.url);
+          const contentHash = discoveryHash(bounded, canonicalUrl);
+          const outcome = await this.repository.upsertDiscoveredUrl({
+            ...bounded,
             sourceId: source.id,
             scanJobId: job.id,
             canonicalUrl,

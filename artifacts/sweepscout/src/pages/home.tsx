@@ -444,6 +444,9 @@ function PublicFooter() {
           <a href="#pricing" className="hover:text-foreground">Pricing</a>
           <a href="#safety" className="hover:text-foreground">Safety</a>
           <a href="#faq" className="hover:text-foreground">FAQ</a>
+          <Link href="/policies" className="hover:text-foreground">Policies</Link>
+          <Link href="/policies/privacy" className="hover:text-foreground">Privacy</Link>
+          <Link href="/policies/terms" className="hover:text-foreground">Terms</Link>
           <Link href="/dashboard" className="hover:text-foreground">Flight Deck</Link>
         </nav>
         <p className="text-xs text-muted">© 2026 Play Pack Pilot</p>

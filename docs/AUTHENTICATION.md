@@ -86,6 +86,14 @@ not immediately destroy billing, audit, or compliance evidence. An authorized
 operator must verify subscription state and retention requirements before
 processing the request and disabling or deleting the Supabase identity.
 
+The request is transaction-locked and idempotently reuses an existing requested
+or reviewing item. Migration `0009` adds `scheduled_for`, `retention_until`,
+`retention_reason`, and `identity_redacted_at` lifecycle hooks.
+
+`GET /api/auth/data-export` produces a no-store JSON export scoped exclusively
+to the authenticated server session. Export contents and the operator workflow
+are documented in `docs/SECURITY_PRIVACY_AND_POLICIES.md`.
+
 ## Validation boundaries
 
 Automated tests prove local cookie/CSRF behavior, protected routes, fail-closed

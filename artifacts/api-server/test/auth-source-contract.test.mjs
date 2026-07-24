@@ -9,7 +9,7 @@ const router = await readFile(path.resolve("src/routes/index.ts"), "utf8");
 const clientAuth = await readFile(path.resolve("../sweepscout/src/lib/auth.tsx"), "utf8");
 
 test("authentication routes cover the required Supabase lifecycle", () => {
-  for (const route of ["/config", "/signup", "/login", "/exchange", "/refresh", "/forgot-password", "/reset-password", "/oauth/google", "/logout", "/session"]) {
+  for (const route of ["/config", "/signup", "/login", "/exchange", "/refresh", "/forgot-password", "/reset-password", "/oauth/google", "/logout", "/session", "/data-export", "/account-deletion"]) {
     assert.match(routes, new RegExp(`\\"${route}\\"`));
   }
   assert.match(routes, /verification email will arrive shortly/);
@@ -28,9 +28,11 @@ test("session cookies and cookie mutations use hardened controls", () => {
 
 test("application routes authenticate before the product router", () => {
   const authIndex = router.indexOf("router.use(authenticateRequest)");
+  const rateIndex = router.indexOf('checkRateLimit(`api:');
   const csrfIndex = router.indexOf("router.use(requireCsrf)");
   const productIndex = router.indexOf("router.use(sweepscoutRouter)");
   assert.ok(authIndex > -1 && authIndex < productIndex);
+  assert.ok(rateIndex > authIndex && rateIndex < csrfIndex);
   assert.ok(csrfIndex > authIndex && csrfIndex < productIndex);
 });
 

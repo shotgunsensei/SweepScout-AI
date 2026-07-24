@@ -23,6 +23,7 @@ import AlertsPage from "@/pages/alerts";
 import NotFound from "@/pages/not-found";
 import OnboardingPage from "@/pages/onboarding";
 import { AuthCallbackPage, ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage } from "@/pages/auth";
+import { PolicyIndexPage, PolicyPage } from "@/pages/policies";
 import { AuthProvider, ProtectedRoute } from "@/lib/auth";
 
 const queryClient = new QueryClient({
@@ -42,6 +43,8 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/signup" component={SignupPage} />
       <Route path="/pricing" component={PricingPage} />
+      <Route path="/policies" component={PolicyIndexPage} />
+      <Route path="/policies/:slug" component={PolicyPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/auth/callback" component={AuthCallbackPage} />

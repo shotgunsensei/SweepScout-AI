@@ -78,8 +78,7 @@ function handler(fn: (req: Request, res: Response) => Promise<void>) {
 }
 
 function clientKey(req: Request) {
-  const forwarded = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
-  return forwarded || req.socket.remoteAddress || "local";
+  return req.ip || req.socket.remoteAddress || "local";
 }
 
 function bool(value: unknown) {

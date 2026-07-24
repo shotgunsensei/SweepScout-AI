@@ -16,6 +16,7 @@ import {
 } from "@/lib/auth/session";
 import {
   ensurePersonalProfile,
+  exportPersonalData,
   getPersonalProfile,
   requestAccountDeletion,
   updatePersonalProfile,
@@ -221,6 +222,15 @@ router.post("/account-deletion", requireCsrf, handler(async (req, res) => {
   const auth = await resolveAuthContext(req, res);
   if (!enforceRateLimit(req, res, "account-deletion", auth.userId, 3)) return;
   ok(res, await requestAccountDeletion(auth, req.body?.reason), 202);
+}));
+
+router.get("/data-export", handler(async (req, res) => {
+  const auth = await resolveAuthContext(req, res);
+  if (!enforceRateLimit(req, res, "data-export", auth.userId, 3)) return;
+  const data = await exportPersonalData(auth);
+  res.setHeader("Cache-Control", "no-store, private");
+  res.setHeader("Content-Disposition", `attachment; filename="play-pack-pilot-data-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.type("application/json").send(JSON.stringify(data, null, 2));
 }));
 
 function sessionPayload(auth: AuthContext, onboardingCompletedAt: string | null) {

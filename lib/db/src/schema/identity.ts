@@ -149,8 +149,25 @@ export const accountDeletionRequests = pgTable(
     requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
     processedAt: timestamp("processed_at", { withTimezone: true }),
     processedByUserId: uuid("processed_by_user_id").references(() => profiles.id, { onDelete: "restrict" }),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    retentionUntil: timestamp("retention_until", { withTimezone: true }),
+    retentionReason: text("retention_reason"),
+    identityRedactedAt: timestamp("identity_redacted_at", { withTimezone: true }),
   },
   (table) => [index("account_deletion_requests_user_idx").on(table.userId, table.status)],
+);
+
+export const privacyExportEvents = pgTable(
+  "privacy_export_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "restrict" }),
+    formatVersion: text("format_version").notNull(),
+    recordCounts: jsonb("record_counts").$type<Record<string, number>>().notNull().default({}),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("privacy_export_events_user_idx").on(table.userId, table.requestedAt)],
 );
 
 export const insertProfileSchema = createInsertSchema(profiles);

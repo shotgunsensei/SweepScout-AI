@@ -25,6 +25,10 @@ test("local development sessions protect mutations and enforce owner authorizati
   const sessionPayload = await sessionResponse.json();
   assert.equal(sessionPayload.data.mode, "local");
   assert.equal(sessionPayload.data.onboardingCompleted, false);
+  assert.equal(sessionResponse.headers.get("x-frame-options"), "DENY");
+  assert.equal(sessionResponse.headers.get("x-content-type-options"), "nosniff");
+  assert.match(sessionResponse.headers.get("content-security-policy") ?? "", /default-src 'none'/);
+  assert.equal(sessionResponse.headers.get("x-powered-by"), null);
   const cookies = cookieHeader(sessionResponse);
   const csrf = cookieValue(cookies, "ppp_csrf");
   assert.ok(csrf.length >= 32);
@@ -94,6 +98,7 @@ test("explicit local owner mode authorizes platform administration", async (t) =
   const admin = await fetch(`http://127.0.0.1:${port}/api/admin/access`, { headers: { cookie: cookieHeader(sessionResponse) } });
   const adminBody = await admin.text();
   assert.equal(admin.status, 200, adminBody);
+  assert.equal(admin.headers.get("ratelimit-limit"), "900");
 });
 
 function validOnboarding() {
