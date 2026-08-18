@@ -389,9 +389,11 @@ router.get("/tenant", handler(async (_req, res) => {
   ok(res, await getActiveTenant());
 }));
 
-router.get("/sweepstakes", handler(async (_req, res) => {
+router.get("/sweepstakes", handler(async (req, res) => {
   const store = await getStore();
-  ok(res, await store.listSweepstakes());
+  const items = await store.listSweepstakes();
+  const sourceType = req.query.sourceType === "creator" ? "creator" : req.query.sourceType === "brand" ? "brand" : null;
+  ok(res, sourceType ? items.filter((item) => (item.sourceType ?? "brand") === sourceType) : items);
 }));
 
 router.get("/sweepstakes/:id", handler(async (req, res) => {
@@ -614,7 +616,16 @@ router.post("/discovery/run", handler(async (req, res) => {
   if (jobId) {
     await assertCanCreateDiscoveryJob();
   }
-  const job = jobId ? await runDiscoveryJob(jobId) : await createAndRunDiscovery();
+  const provider = req.body?.provider === "youtube" ? "youtube" : req.body?.provider === "brave" ? "brave" : undefined;
+  if (provider === "youtube") {
+    const youtubeRate = checkRateLimit("discovery:youtube:global", 2, 10 * 60_000);
+    if (!youtubeRate.allowed) {
+      fail(res, "YouTube scans are limited to protect the shared API quota. Try again in a few minutes.", 429);
+      return;
+    }
+  }
+  const maxResults = Number(req.body?.maxResults) || undefined;
+  const job = jobId ? await runDiscoveryJob(jobId) : await createAndRunDiscovery({ provider, maxResults });
   ok(res, job);
 }));
 

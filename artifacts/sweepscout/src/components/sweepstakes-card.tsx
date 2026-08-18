@@ -18,13 +18,21 @@ export function SweepstakeCard(props: { item: Sweepstake; children?: React.React
                 {item.title}
               </Link>
             </h2>
+            <SourceTypeBadge item={item} />
             <EligibilityBadge item={item} />
             <RiskBadge item={item} />
             <DeadlineBadge item={item} />
             <EntryFrequencyBadge value={item.entryFrequency} />
           </div>
           <p className="mt-2 text-sm text-muted">
-            {item.sponsor} | {formatCurrency(item.prizeRetailValue)} | {categoryLabel(item.category)}
+            {item.creator?.channelUrl ? (
+              <a href={item.creator.channelUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                {item.sponsor}
+              </a>
+            ) : (
+              item.sponsor
+            )}{" "}
+            | {formatCurrency(item.prizeRetailValue)} | {categoryLabel(item.category)}
           </p>
           {!props.compact ? (
             <p className="mt-3 max-w-4xl text-sm leading-6 text-foreground/90">{item.eligibilitySummary}</p>
@@ -69,6 +77,18 @@ export function SweepstakeCard(props: { item: Sweepstake; children?: React.React
 }
 
 export const SweepstakesCard = SweepstakeCard;
+
+export function SourceTypeBadge({ item }: { item: Sweepstake }) {
+  if ((item.sourceType ?? "brand") === "creator") {
+    return (
+      <Badge tone="warn">
+        <Repeat2 className="mr-1" size={13} aria-hidden />
+        Creator giveaway
+      </Badge>
+    );
+  }
+  return <Badge>Brand</Badge>;
+}
 
 export function EligibilityBadge({ item }: { item: Sweepstake }) {
   if (item.status === "eligible") {

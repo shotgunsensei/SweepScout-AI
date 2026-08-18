@@ -26,6 +26,12 @@ export const DEFAULT_DISCOVERY_QUERIES = [
   "enter sweepstakes online no purchase necessary",
 ];
 
+export const YOUTUBE_DISCOVERY_QUERIES = [
+  "giveaway open to everyone no purchase necessary",
+  "sweepstakes giveaway enter to win",
+  "giveaway official rules",
+];
+
 export type DiscoveryRunInput = {
   queries?: string[];
   maxResults?: number;
@@ -41,6 +47,8 @@ type DiscoveryCandidate = {
   query: string;
   snippet: string;
   provider: string;
+  sourceType: "brand" | "creator";
+  creator: Sweepstake["creator"];
 };
 
 type DiscoveryLog = {
@@ -57,12 +65,13 @@ const POLITE_DELAY_MS = 1250;
 export async function createAndRunDiscovery(input: DiscoveryRunInput = {}) {
   await assertCanCreateDiscoveryJob();
   const store = await getStore();
-  const queries = normalizeQueries(input.queries);
+  const youtube = input.provider === "youtube";
+  const queries = normalizeQueries(input.queries?.length ? input.queries : youtube ? YOUTUBE_DISCOVERY_QUERIES : undefined);
   const now = new Date().toISOString();
   const job: DiscoveryJob = {
     id: randomUUID(),
     organizationId: DEFAULT_ORGANIZATION_ID,
-    label: "Sweepstakes search discovery",
+    label: youtube ? "YouTube creator giveaway discovery" : "Sweepstakes search discovery",
     query: queries.join(" | "),
     seeds: queries,
     status: "queued",
@@ -71,6 +80,7 @@ export async function createAndRunDiscovery(input: DiscoveryRunInput = {}) {
     createdAt: now,
     notes: "Queued discovery run.",
     scope: "general",
+    provider: input.provider ?? null,
   };
 
   await store.saveDiscoveryJob(job);
@@ -120,7 +130,7 @@ export async function runDiscoveryJob(jobId: string, input: DiscoveryRunInput = 
   logDiscovery(logs, "info", "Discovery run started.", { jobId: job.id });
 
   try {
-    const provider = getSearchProvider(input.provider);
+    const provider = getSearchProvider(input.provider ?? job.provider ?? undefined);
     const localDiscovery = input.local ?? running.scope === "local";
     const profile = localDiscovery ? await store.getUserProfile() : null;
     const reputationReport = await getSponsorReputationReport();
@@ -303,6 +313,8 @@ function normalizeResult(result: SearchResult, query: string, provider: string, 
       query,
       snippet: result.snippet,
       provider,
+      sourceType: result.sourceType ?? "brand",
+      creator: result.creator ?? null,
     };
   } catch {
     logDiscovery(logs, "warn", "Skipped invalid URL.", { url: result.url });
@@ -330,6 +342,13 @@ async function saveCandidate(
       severity: "medium",
     },
   ];
+  if (candidate.sourceType === "creator") {
+    riskFlags.push({
+      code: "creator-giveaway",
+      label: "Creator giveaway — verify official rules and entry method on the video/description",
+      severity: "medium",
+    });
+  }
   if (context.location?.requiresInPersonAppearance) {
     riskFlags.push({
       code: "in-person-required",
@@ -341,9 +360,11 @@ async function saveCandidate(
     id: randomUUID(),
     organizationId: DEFAULT_ORGANIZATION_ID,
     title: candidate.title.slice(0, 180),
-    sponsor: domain,
+    sponsor: candidate.sourceType === "creator" && candidate.creator ? candidate.creator.channelTitle : domain,
     url: candidate.normalizedUrl,
     source: candidate.provider,
+    sourceType: candidate.sourceType,
+    creator: candidate.creator,
     status: "discovered",
     category: classifySweepstakeCategory({
       title: candidate.title,

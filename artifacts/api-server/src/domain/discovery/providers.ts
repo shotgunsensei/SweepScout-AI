@@ -1,8 +1,21 @@
+import { BraveSearchProvider, YouTubeSearchProvider, connectorsConfigured } from "@/lib/discovery/connector-providers";
+
+export type SweepstakeSourceType = "brand" | "creator";
+
+export type CreatorAttribution = {
+  platform: "youtube";
+  channelTitle: string;
+  channelUrl: string | null;
+  videoUrl: string;
+};
+
 export type SearchResult = {
   title: string;
   url: string;
   snippet: string;
   source: string;
+  sourceType?: SweepstakeSourceType;
+  creator?: CreatorAttribution | null;
 };
 
 export type SearchProviderInput = {
@@ -71,7 +84,13 @@ export class JsonSearchProvider implements SearchProvider {
   }
 }
 
-export function getSearchProvider(name = process.env.SEARCH_PROVIDER ?? "mock"): SearchProvider {
+export function getSearchProvider(name = process.env.SEARCH_PROVIDER ?? defaultProviderName()): SearchProvider {
+  if (name === "brave") {
+    return new BraveSearchProvider();
+  }
+  if (name === "youtube") {
+    return new YouTubeSearchProvider();
+  }
   if (name === "json-http") {
     const endpoint = process.env.SEARCH_PROVIDER_ENDPOINT;
     if (!endpoint) {
@@ -81,6 +100,10 @@ export function getSearchProvider(name = process.env.SEARCH_PROVIDER ?? "mock"):
   }
 
   return new MockSearchProvider();
+}
+
+function defaultProviderName() {
+  return connectorsConfigured() ? "brave" : "mock";
 }
 
 const mockResults: SearchResult[] = [

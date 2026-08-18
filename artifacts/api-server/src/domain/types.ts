@@ -169,6 +169,13 @@ export type Sweepstake = {
   sponsor: string;
   url: string;
   source: string;
+  sourceType?: "brand" | "creator";
+  creator?: {
+    platform: "youtube";
+    channelTitle: string;
+    channelUrl: string | null;
+    videoUrl: string;
+  } | null;
   status: SweepstakeStatus;
   category: PrizeCategory;
   prizeRetailValue: number | null;
@@ -213,6 +220,7 @@ export type DiscoveryJob = {
   createdAt: string;
   notes: string;
   scope?: DiscoveryScope;
+  provider?: string | null;
 };
 
 export type ExtractionJob = {

@@ -12,11 +12,21 @@ export function OpportunityCard({ item, onSave, onHide, busy }: { item: RadarOpp
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={item.eligibilityStatus === "eligible" ? "ok" : item.eligibilityStatus === "ineligible" ? "danger" : "warn"}>{titleCase(item.eligibilityStatus)}</Badge>
+            {(item.sourceType ?? "brand") === "creator" ? <Badge tone="warn">Creator giveaway</Badge> : <Badge>Brand</Badge>}
             <Badge>{titleCase(item.entryFrequency)}</Badge>
             {item.categories.slice(0, 2).map((category) => <Badge key={category}>{titleCase(category)}</Badge>)}
           </div>
           <Link href={`/dashboard/sweepstakes/${item.id}`} className="mt-3 block text-xl font-bold text-foreground hover:text-accent sm:text-2xl">{item.title}</Link>
-          <p className="mt-1 text-sm text-muted">By {item.sponsor}</p>
+          <p className="mt-1 text-sm text-muted">
+            By{" "}
+            {item.creator?.channelUrl ? (
+              <a href={item.creator.channelUrl} target="_blank" rel="noopener noreferrer external" referrerPolicy="no-referrer" className="text-accent hover:underline">
+                {item.sponsor}
+              </a>
+            ) : (
+              item.sponsor
+            )}
+          </p>
           <p className="mt-3 line-clamp-2 max-w-4xl text-sm leading-6 text-foreground/85">{item.summary || "Review the official promotion and rules for complete details."}</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <Fact icon={<Trophy size={15} />} label={item.primaryPrize ?? "Prize details pending"} value={formatCurrency(item.estimatedPrizeValue)} />

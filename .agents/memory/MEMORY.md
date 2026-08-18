@@ -1,1 +1,2 @@
 - [OpenAI via Replit AI Integrations](openai-integration.md) — api-server reaches OpenAI through the Replit proxy (Responses API + strict json_schema); seed URLs 404 before the AI call.
+- [Discovery via Replit connectors](discovery-connectors.md) — Brave/YouTube via connectors proxy; YouTube quota guard, provider kept on jobs, dual-store persistence.

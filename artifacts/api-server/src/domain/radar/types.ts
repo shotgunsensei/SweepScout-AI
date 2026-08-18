@@ -3,7 +3,8 @@ export type RadarFilters = {
   query: string | null; category: string | null; minPrize: number | null; deadlineBefore: string | null; startAfter: string | null;
   frequency: string | null; maxEffort: number | null; country: string | null; region: string | null; userAge: number | null;
   sponsor: string | null; purchaseRequired: boolean | null; socialRequired: boolean | null; minLegitimacy: number | null;
-  minSourceConfidence: number | null; saved: boolean | null; entered: boolean | null; sort: RadarSort; page: number; pageSize: number;
+  minSourceConfidence: number | null; saved: boolean | null; entered: boolean | null; sourceType: "brand" | "creator" | null;
+  sort: RadarSort; page: number; pageSize: number;
 };
 export type RadarPage = { items: RadarOpportunity[]; total: number; page: number; pageSize: number; hasMore: boolean; sort: RadarSort };
 import type { MatchFactor } from "../personalization/types";
@@ -17,5 +18,6 @@ export type RadarOpportunity = {
   entryMethods: Array<{ methodType: string; description: string; entryUrl: string; frequency: string; purchaseRequired: boolean; socialPlatform: string | null; estimatedMinutes: number | null }>;
   categories: string[]; qualityWarnings: Array<{ type: string; severity: string; details: unknown }>; sources: Array<{ name: string; attribution: string | null; lastSeenAt: string }>;
   saved: boolean; userStatus: string | null; popularity: number; matchScore: number; matchFactors: MatchFactor[]; eligibilityStatus: "eligible" | "ineligible" | "review";
+  sourceType: "brand" | "creator"; creator: { platform: "youtube"; channelTitle: string; channelUrl: string | null; videoUrl: string } | null;
 };
 export type RadarViewer = { userId: string; country: string | null; region: string | null; age: number | null; minimumPrize: number; maximumEffort: number; preferredCategories: string[]; preferredFrequencies: string[]; allowSocial: boolean; allowPurchase: boolean };

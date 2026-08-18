@@ -69,6 +69,7 @@ export default function SweepstakesPage() {
             <SelectField label="Social requirement" value={filters.socialRequired} onChange={(value) => update({ socialRequired: value })} options={["false", "true"]} labels={["No social action", "Social action"]} />
             <Field label="Minimum legitimacy"><input type="number" min="0" max="100" value={filters.minLegitimacy} onChange={(e) => update({ minLegitimacy: e.currentTarget.value })} /></Field>
             <Field label="Minimum source confidence"><input type="number" min="0" max="100" value={filters.minSourceConfidence} onChange={(e) => update({ minSourceConfidence: e.currentTarget.value })} /></Field>
+            <SelectField label="Source type" value={filters.sourceType} onChange={(value) => update({ sourceType: value })} options={["brand", "creator"]} labels={["Brand sweepstakes", "Creator giveaways"]} />
             <SelectField label="Saved status" value={filters.saved} onChange={(value) => update({ saved: value })} options={["true", "false"]} labels={["Saved", "Not saved"]} />
             <SelectField label="Entered status" value={filters.entered} onChange={(value) => update({ entered: value })} options={["true", "false"]} labels={["Entered", "Not entered"]} />
           </div>

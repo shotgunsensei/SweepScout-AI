@@ -781,6 +781,8 @@ function normalizeSweepstakePayload(sweepstake: Sweepstake): Sweepstake {
   return {
     ...sweepstake,
     organizationId: sweepstake.organizationId ?? DEFAULT_ORGANIZATION_ID,
+    sourceType: sweepstake.sourceType ?? "brand",
+    creator: sweepstake.creator ?? null,
     category: normalizePrizeCategory(sweepstake.category),
     noPurchaseMethodFound: sweepstake.noPurchaseMethodFound ?? false,
     formUrl: sweepstake.formUrl ?? sweepstake.extractedRules?.formUrl ?? null,
@@ -799,6 +801,7 @@ function normalizeDiscoveryJobPayload(job: DiscoveryJob): DiscoveryJob {
     ...job,
     organizationId: job.organizationId ?? DEFAULT_ORGANIZATION_ID,
     scope: job.scope ?? "general",
+    provider: job.provider ?? null,
   };
 }
 

@@ -11,7 +11,9 @@ export function parseRadarFilters(input: Record<string, unknown>): RadarFilters 
     maxEffort: integer(input.maxEffort, 0, 100), country: code(input.country, 2), region: text(input.region, 100), userAge: integer(input.age, 0, 130),
     sponsor: text(input.sponsor, 200), purchaseRequired: bool(input.purchaseRequired), socialRequired: bool(input.socialRequired),
     minLegitimacy: integer(input.minLegitimacy, 0, 100), minSourceConfidence: integer(input.minSourceConfidence, 0, 100),
-    saved: bool(input.saved), entered: bool(input.entered), sort: sort && sorts.has(sort) ? sort : "recommended",
+    saved: bool(input.saved), entered: bool(input.entered),
+    sourceType: input.sourceType === "creator" ? "creator" : input.sourceType === "brand" ? "brand" : null,
+    sort: sort && sorts.has(sort) ? sort : "recommended",
     page: integer(input.page, 1, 10_000) ?? 1, pageSize: integer(input.pageSize, 1, 100) ?? 24,
   };
 }

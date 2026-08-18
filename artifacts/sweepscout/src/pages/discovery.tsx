@@ -11,6 +11,8 @@ import type { DiscoveryJob } from "@/lib/types";
 export default function DiscoveryPage() {
   const { data, isLoading, isError } = useQuery({ queryKey: ["discovery"], queryFn: () => apiGet<DiscoveryJob[]>("/discovery/jobs") });
   const runLocalDiscovery = useApiMutation("/discovery/run-local");
+  const runWebDiscovery = useApiMutation("/discovery/run");
+  const runYouTubeScan = useApiMutation("/discovery/run");
   const jobs = data ?? [];
 
   return (
@@ -26,6 +28,34 @@ export default function DiscoveryPage() {
           <SubmitButton disabled={runLocalDiscovery.isPending}>
             <span className="inline-flex items-center gap-2">
               <Radar size={15} aria-hidden="true" /> Run Local Discovery
+            </span>
+          </SubmitButton>
+        </form>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            runWebDiscovery.mutate(formToObject(event.currentTarget));
+          }}
+        >
+          <input type="hidden" name="provider" value="brave" />
+          <input type="hidden" name="maxResults" value="15" />
+          <SubmitButton disabled={runWebDiscovery.isPending}>
+            <span className="inline-flex items-center gap-2">
+              <Radar size={15} aria-hidden="true" /> Run Web Discovery
+            </span>
+          </SubmitButton>
+        </form>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            runYouTubeScan.mutate(formToObject(event.currentTarget));
+          }}
+        >
+          <input type="hidden" name="provider" value="youtube" />
+          <input type="hidden" name="maxResults" value="15" />
+          <SubmitButton disabled={runYouTubeScan.isPending}>
+            <span className="inline-flex items-center gap-2">
+              <Radar size={15} aria-hidden="true" /> Run YouTube Scan
             </span>
           </SubmitButton>
         </form>

@@ -186,6 +186,8 @@ class SupabaseStore implements SweepScoutStore {
           rulesText: sweepstake.rulesText,
           rulesExtractedAt: sweepstake.rulesExtractedAt,
           source: sweepstake.source,
+          sourceType: sweepstake.sourceType ?? "brand",
+          creator: sweepstake.creator ?? null,
           riskFlags: sweepstake.riskFlags,
           emailAlias: sweepstake.emailAlias,
           localRegion: sweepstake.localRegion,
@@ -229,7 +231,15 @@ class SupabaseStore implements SweepScoutStore {
         query: job.query,
         status: job.status,
         results_found: job.discoveredCount,
-        errors: job.notes ? [{ note: job.notes }] : [],
+        errors: [{
+          note: job.notes,
+          meta: {
+            label: job.label,
+            seeds: job.seeds,
+            scope: job.scope ?? "general",
+            provider: job.provider ?? null,
+          },
+        }],
         created_at: job.createdAt,
         completed_at: job.status === "completed" || job.status === "failed" ? (job.lastRunAt ?? new Date().toISOString()) : null,
       })
@@ -483,6 +493,8 @@ function mapSweepstakesRow(row: SweepstakesRow): Sweepstake {
     sponsor: row.sponsor ?? "Unknown sponsor",
     url: row.canonical_url ?? row.source_url,
     source: stringFrom(extracted.source, "supabase"),
+    sourceType: extracted.sourceType === "creator" ? "creator" : "brand",
+    creator: creatorFrom(extracted.creator),
     status: fromDatabaseSweepstakesStatus(row.status),
     category: normalizePrizeCategory(stringFrom(extracted.category, "high-risk/unclear")),
     prizeRetailValue: row.estimated_value,
@@ -516,18 +528,36 @@ function mapSweepstakesRow(row: SweepstakesRow): Sweepstake {
   };
 }
 
+function creatorFrom(value: unknown): Sweepstake["creator"] {
+  const record = asRecord((value ?? null) as Json);
+  const channelTitle = nullableStringFrom(record.channelTitle);
+  const videoUrl = nullableStringFrom(record.videoUrl);
+  if (!channelTitle || !videoUrl) return null;
+  return {
+    platform: "youtube",
+    channelTitle,
+    channelUrl: nullableStringFrom(record.channelUrl),
+    videoUrl,
+  };
+}
+
 function mapDiscoveryJobRow(row: DiscoveryJobRow): DiscoveryJob {
+  const first = Array.isArray(row.errors) ? asRecord((row.errors[0] ?? null) as Json) : {};
+  const meta = asRecord((first.meta ?? null) as Json);
+  const note = nullableStringFrom(first.note);
   return {
     id: row.id,
     organizationId: DEFAULT_ORGANIZATION_ID,
-    label: row.query,
+    label: stringFrom(meta.label, row.query),
     query: row.query,
-    seeds: [],
+    seeds: stringArrayFrom(meta.seeds),
     status: row.status as DiscoveryJob["status"],
     discoveredCount: row.results_found,
     lastRunAt: row.completed_at,
     createdAt: row.created_at,
-    notes: JSON.stringify(row.errors),
+    notes: note ?? JSON.stringify(row.errors),
+    scope: meta.scope === "local" ? "local" : "general",
+    provider: nullableStringFrom(meta.provider),
   };
 }
 

@@ -4,6 +4,7 @@ import { startInboxMonitoring } from "@/lib/services/inbox-monitor";
 import { startRulesChangeMonitoring } from "@/lib/services/rules-change-monitor";
 import { startSourceScannerScheduler } from "@/lib/scanner/scheduler";
 import { startAlertsScheduler } from "@/lib/alerts";
+import { startDiscoveryScheduler } from "@/lib/services/discovery-scheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -34,4 +35,5 @@ app.listen(port, (err) => {
   });
   startSourceScannerScheduler();
   startAlertsScheduler();
+  startDiscoveryScheduler();
 });

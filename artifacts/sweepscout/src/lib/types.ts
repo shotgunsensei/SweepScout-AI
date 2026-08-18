@@ -65,6 +65,8 @@ export type RiskFlag = {
 };
 
 export type RadarOpportunity = {
+  sourceType?: "brand" | "creator";
+  creator?: { platform: "youtube"; channelTitle: string; channelUrl: string | null; videoUrl: string } | null;
   id: string;
   title: string;
   sponsor: string;
@@ -227,6 +229,13 @@ export type Sweepstake = {
   sponsor: string;
   url: string;
   source: string;
+  sourceType?: "brand" | "creator";
+  creator?: {
+    platform: "youtube";
+    channelTitle: string;
+    channelUrl: string | null;
+    videoUrl: string;
+  } | null;
   status: SweepstakeStatus;
   category: PrizeCategory;
   prizeRetailValue: number | null;
