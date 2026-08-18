@@ -53,14 +53,14 @@ export function SweepstakeCard(props: { item: Sweepstake; children?: React.React
             </div>
           ) : null}
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-            <Link href={`/dashboard/sweepstakes/${item.id}`} className="inline-flex items-center gap-2 rounded-md border border-line bg-panel-strong px-3 py-1.5 text-foreground hover:border-accent/50">
-              Details
-            </Link>
-            <a href={item.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-md bg-reward px-3 py-1.5 font-semibold text-[#111827]">
+            <a href={item.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-md bg-foreground px-4 py-1.5 font-semibold text-background hover:bg-foreground/90">
               Visit Official Sweepstakes <ExternalLink size={15} aria-hidden="true" />
             </a>
+            <Link href={`/dashboard/sweepstakes/${item.id}`} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line bg-panel-strong px-4 py-1.5 text-foreground hover:border-accent/50">
+              Details
+            </Link>
             {item.rulesUrl ? (
-              <a href={item.rulesUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-muted hover:text-foreground">
+              <a href={item.rulesUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 px-2 text-muted hover:text-foreground">
                 Official rules <ExternalLink size={15} aria-hidden="true" />
               </a>
             ) : null}

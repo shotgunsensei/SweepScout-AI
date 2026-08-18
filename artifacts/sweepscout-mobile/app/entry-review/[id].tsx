@@ -51,7 +51,7 @@ function EntryReviewBody({ entry, sweepstake }: { entry: EntryLog; sweepstake: S
           <Badge>{formatDate(entry.attemptedAt)}</Badge>
         </View>
         <Text style={styles.bodyText}>Review the prefilled fields in the controlled browser output before doing anything on the live form.</Text>
-        <Text style={styles.bodyText}>Complete CAPTCHA, terms, eligibility confirmations, and final submit manually. SweepScout AI does not solve CAPTCHA or submit entries.</Text>
+        <Text style={styles.bodyText}>Complete CAPTCHA, terms, eligibility confirmations, and final submit manually. Play Pack Pilot does not solve CAPTCHA or submit entries.</Text>
         <Text style={styles.bodyText}>{entry.notes}</Text>
         {entry.blockers?.length ? (
           <View style={styles.wrap}>

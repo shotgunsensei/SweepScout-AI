@@ -1,6 +1,8 @@
-# [Project name]
+# Play Pack Pilot
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Play Pack Pilot is an AI-assisted sweepstakes discovery and research product
+that helps users discover, evaluate, organize, and track opportunities while
+keeping every entry user-controlled on the sponsor's official site.
 
 ## Run & Operate
 
@@ -38,19 +40,36 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/sweepscout` — React/Vite web product and public marketing site.
+- `artifacts/api-server` — Express API and domain services.
+- `artifacts/sweepscout-extension` — optional Chrome companion.
+- `artifacts/sweepscout-mobile` — Expo companion app.
+- `docs/BRAND_SYSTEM.md` — customer-facing naming and visual language.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Customer-facing naming uses Play Pack Pilot; stable internal package names,
+  routes, database identifiers, migrations, and `SWEEPSCOUT_*` environment
+  variables stay unchanged when renaming would add migration risk.
+- Sponsor pages remain the only place users submit entries. The product
+  researches, organizes, reminds, and supports user-controlled prefill.
 
 ## Product
 
-SweepScout AI — a sweepstakes discovery, compliance, and manual entry-tracking tool. It discovers candidate sweepstakes, extracts/scoring rules, stages an approval queue, and tracks manual entries. It never auto-submits: manual approval is always required for every entry. Frontend artifact `sweepscout` (Vite+React, previewPath `/`) talks to the `api-server` Express backend under `/api`.
+Play Pack Pilot discovers candidate sweepstakes, analyzes rules, helps users
+build a focused plan, and tracks user-reported activity. It never auto-submits:
+manual action is always required for every entry. Frontend artifact
+`sweepscout` (Vite+React, previewPath `/`) talks to the `api-server` Express
+backend under `/api`.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Use the **Refined Flight Deck** visual direction: trustworthy SaaS polish,
+  deep aviation navy, cyan signal colors, restrained gold for prize/value
+  moments, and selective aviation imagery.
+- Pair aviation feature names with clear plain-English explanations.
+- Keep the product informational and research-focused: direct sponsor links,
+  no auto-entry, and no casino or gambling imagery.
 
 ## Gotchas
 

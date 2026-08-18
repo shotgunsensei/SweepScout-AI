@@ -26,8 +26,8 @@ export default function DashboardScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ paddingBottom: 28 }}>
-        <PageHeader title="Trust Dashboard" kicker="Sweepstakes compliance command center">
-          <Badge tone={runtime.mode === "supabase" ? "ok" : "default"}>{runtime.mode === "supabase" ? "Supabase" : "SQLite"} trust console</Badge>
+        <PageHeader title="Flight Deck" kicker="Today's opportunity plan">
+          <Badge tone={runtime.mode === "supabase" ? "ok" : "default"}>{runtime.mode === "supabase" ? "Cloud" : "Local"} workspace</Badge>
           <ActionButton
             label="Review Queue"
             icon={<ArrowRight color={colors.black} size={16} />}
@@ -70,18 +70,18 @@ function DashboardBody({ data }: { data: DashboardData }) {
       </View>
 
       <View>
-        <SectionHeader title="Priority Sweepstakes" eyebrow="Highest attention first" />
+        <SectionHeader title="Priority opportunities" eyebrow="Highest attention first" />
         <View style={{ gap: 12 }}>
           {priority.length ? (
             priority.map((item) => <SweepstakeCard key={item.id} item={item} compact />)
           ) : (
-            <EmptyState title="No sweepstakes yet" body="Run discovery or add candidates to start compliance review." />
+            <EmptyState title="No opportunities yet" body="Run Source Radar or add a candidate to begin reviewing official rules." />
           )}
         </View>
       </View>
 
       <Card>
-        <SectionHeader title="Compliance Locks" eyebrow="Always-on guardrails" />
+        <SectionHeader title="Safety checks" eyebrow="Always-on guardrails" />
         <View style={{ gap: 10 }}>
           <Text style={[styles.bodyText, { color: colors.ok }]}>Explicit approval required</Text>
           <Text style={[styles.bodyText, { color: colors.warning }]}>CAPTCHA and payment flows stay manual-only</Text>

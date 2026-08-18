@@ -82,7 +82,7 @@ function CredentialPage({ mode }: { mode: AuthMode }) {
     <AuthFrame>
       <div className="rounded-2xl border border-line bg-panel/95 p-6 shadow-[var(--shadow-soft)] sm:p-8">
         <div className="flex size-12 items-center justify-center rounded-xl bg-accent text-accent-foreground"><Plane size={22} /></div>
-        <h1 className="mt-5 font-display text-2xl font-extrabold tracking-tight text-foreground">{title}</h1>
+        <h1 className="mt-5 font-display text-2xl font-bold tracking-tight text-foreground">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
         <form className="mt-6 grid gap-4" onSubmit={submit}>
           {mode === "signup" ? <Field label="Display name" value={displayName} onChange={setDisplayName} autoComplete="name" minLength={1} /> : null}
@@ -90,7 +90,7 @@ function CredentialPage({ mode }: { mode: AuthMode }) {
           {mode !== "forgot" ? <Field label="Password" type="password" value={password} onChange={setPassword} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 12 : 1} icon={<LockKeyhole size={16} />} /> : null}
           {error ? <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{error}</p> : null}
           {status ? <p className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success" role="status">{status}</p> : null}
-          <button disabled={busy} className="min-h-11 rounded-lg bg-accent px-4 font-semibold text-accent-foreground transition hover:brightness-110 disabled:opacity-60">
+          <button disabled={busy} className="min-h-11 rounded-lg bg-foreground px-4 font-semibold text-foreground-inverse transition hover:bg-foreground/90 disabled:opacity-60">
             {busy ? "Working…" : mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Send recovery link"}
           </button>
         </form>
@@ -150,11 +150,11 @@ export function ResetPasswordPage() {
       setError(caught instanceof ApiError ? caught.message : "Unable to reset the password.");
     }
   }
-  return <AuthFrame><div className="rounded-2xl border border-line bg-panel p-7 shadow-[var(--shadow-soft)]"><h1 className="font-display text-2xl font-bold">Choose a new password</h1>{error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}{ready ? <form className="mt-5 grid gap-4" onSubmit={submit}><Field label="New password" type="password" value={password} onChange={setPassword} autoComplete="new-password" minLength={12} /><button className="min-h-11 rounded-lg bg-accent font-semibold text-accent-foreground">Update password</button></form> : null}{status ? <p className="mt-4 text-sm text-success">{status} <Link href="/login" className="underline">Sign in</Link></p> : null}</div></AuthFrame>;
+  return <AuthFrame><div className="rounded-2xl border border-line bg-panel p-7 shadow-[var(--shadow-soft)]"><h1 className="font-display text-2xl font-bold">Choose a new password</h1>{error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}{ready ? <form className="mt-5 grid gap-4" onSubmit={submit}><Field label="New password" type="password" value={password} onChange={setPassword} autoComplete="new-password" minLength={12} /><button className="min-h-11 rounded-lg bg-foreground font-semibold text-foreground-inverse hover:bg-foreground/90">Update password</button></form> : null}{status ? <p className="mt-4 text-sm text-success">{status} <Link href="/login" className="underline">Sign in</Link></p> : null}</div></AuthFrame>;
 }
 
 function AuthFrame({ children }: { children: React.ReactNode }) {
-  return <main className="relative grid min-h-dvh place-items-center overflow-hidden bg-background px-4 py-10 text-foreground"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(37,99,235,0.22),transparent_35%),radial-gradient(circle_at_80%_70%,rgba(124,58,237,0.17),transparent_38%)]" /><div className="relative w-full max-w-md"><Link href="/" className="mb-5 flex items-center justify-center"><img src="/brand/play-pack-pilot-logo-original.png" alt="Play Pack Pilot" className="h-24 w-44 object-contain" /></Link>{children}<p className="mt-5 text-center text-xs leading-5 text-muted"><ShieldCheck size={14} className="mr-1 inline" /> Credentials are handled by Supabase Auth and never stored in Play Pack Pilot tables.</p></div></main>;
+  return <main className="relative grid min-h-dvh place-items-center overflow-hidden bg-background px-4 py-10 text-foreground"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,hsl(var(--accent)/0.12),transparent_35%)]" /><div className="relative w-full max-w-md"><Link href="/" className="mb-5 flex items-center justify-center"><img src="/brand/play-pack-pilot-logo-original.png" alt="Play Pack Pilot" className="h-16 w-32 object-contain" /></Link>{children}<p className="mt-5 text-center text-xs leading-5 text-muted"><ShieldCheck size={14} className="mr-1 inline" /> Credentials are handled by Supabase Auth and never stored in Play Pack Pilot tables.</p></div></main>;
 }
 
 function Field({ label, value, onChange, type = "text", autoComplete, minLength, icon }: { label: string; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; minLength?: number; icon?: React.ReactNode }) {

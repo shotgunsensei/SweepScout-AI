@@ -7,13 +7,79 @@ or destructive optimization:
 
 | Asset | Repository path | Dimensions | Format | Use |
 | --- | --- | ---: | --- | --- |
-| Logo | `artifacts/sweepscout/public/brand/play-pack-pilot-logo-original.png` | 1024x1024 | PNG | Public navigation, hero, app shell, footer, social and icon source |
+| Logo | `artifacts/sweepscout/public/brand/play-pack-pilot-logo-original.png` | 1024x1024 | PNG | Public navigation, app shell, and footer |
 | Visual reference | `artifacts/sweepscout/public/brand/play-pack-pilot-visual-reference-original.png` | 1536x1024 | PNG | Internal design reference only |
+
+Generated flight-deck artwork is stored as optimized WebP in
+`artifacts/sweepscout/public/brand/illustrations/`. Use the wide social image
+for Open Graph/Twitter metadata and reserve the other scenes for the public
+hero, preflight setup, and a small number of high-value empty states.
 
 The visual-reference image includes obsolete sweepstakes-administration copy,
 so it is never rendered as product content. Its palette, typography direction,
 aviation energy, icon line weight, and surface treatments informed the active
 design system.
+
+## Naming system
+
+### Canonical product name
+
+Use **Play Pack Pilot** in every customer-facing surface: web, mobile, browser
+extension, reports, exports, metadata, support copy, and onboarding.
+
+- Write the full name on first reference.
+- Do not use “SweepScout,” “SweepScout AI,” “PPP,” or “PlayPackPilot” in prose.
+- `PlayPackPilot` is acceptable only where spaces are technically invalid, such
+  as a user-agent label.
+- Internal package names, routes, database identifiers, migrations, and
+  `SWEEPSCOUT_*` environment variables may keep their existing names when
+  changing them would add migration risk without customer benefit.
+
+Preferred plain-English descriptors are **AI sweepstakes discovery**, **AI
+sweepstakes discovery and research**, and—where space is limited—**AI
+opportunity radar**. Avoid “compliance console,” “command center,” gambling
+language, and claims that imply entry submission or sponsor affiliation.
+
+### Feature vocabulary
+
+| Branded feature | Plain-English meaning | Preferred actions |
+| --- | --- | --- |
+| **Flight Deck** | Dashboard and today's opportunity plan | Review, prioritize, continue |
+| **Opportunity Radar** | Sweepstakes and giveaway feed | Discover, filter, review |
+| **Hangar** | Saved opportunities | Save, remove, organize |
+| **Mission Log** | Entered, skipped, won, and expired activity | Report, update, review |
+| **Flight Plan** | Schedule, reminders, and repeat-entry timing | Schedule, plan, remind |
+| **Co-Pilot** | AI research assistant grounded in available sources | Ask, research, explain |
+| **Source Radar** | Discovery jobs and source operations | Scan, monitor, review |
+| **Pilot Credits** | Plan usage for metered actions | Use, review, manage |
+
+Branded labels are navigation aids, not substitutes for clarity. Pair an
+aviation term with a direct explanation in page descriptions, onboarding, empty
+states, and first-use copy.
+
+### Capitalization, actions, and status language
+
+- Capitalize canonical feature names exactly as listed above.
+- Use sentence case for buttons, secondary headings, status labels, and helper
+  text. Use **AI** in uppercase.
+- Prefer active, user-controlled verbs: **Visit Official Sweepstakes**, **Save
+  to Hangar**, **Report entered**, **Review rules**, and **Run Source Radar**.
+- Do not say that Play Pack Pilot “enters,” “submits,” “wins,” “guarantees,” or
+  “verifies eligibility” for a user.
+- Prefer **Eligible after review** or **Potential match** over “Guaranteed
+  eligible.”
+- Prefer **Rules reviewed**, **Source checked**, or **Last checked** over
+  “Officially verified” unless the sponsor supplied that status.
+- Use **User reported entered** and **User reported won**, not “Entry confirmed”
+  or “Winner confirmed.”
+- Use **Needs review**, **Source unavailable**, and **Details pending** for
+  uncertainty. Use **High-risk signal** or **Review warning** rather than an
+  unqualified “scam” declaration.
+
+The canonical external action is **Visit Official Sweepstakes**. It opens the
+sponsor-controlled page, remains visually distinct from internal “View details”
+actions, and keeps a nearby explanation that Play Pack Pilot is not the sponsor
+or promotion administrator.
 
 ## Semantic tokens
 
@@ -34,7 +100,7 @@ tokens instead of introducing local brand hex values.
 
 ## Typography
 
-- Display: Orbitron 600-800 for major headings and brand lockups.
+- Display: Plus Jakarta Sans 600-800 for major headings and brand lockups.
 - Body: Inter 400-800 for readable product and data copy.
 - Fallback: system sans-serif remains usable when the external font host is
   blocked. No content or layout depends on a font download.
@@ -49,7 +115,8 @@ action labeled `Visit Official Sweepstakes`.
 Thematic navigation always retains a clear description:
 
 - Flight Deck — dashboard.
-- Radar — opportunity feed.
+- Opportunity Radar — sweepstakes and giveaway feed.
+- Hangar — saved opportunities.
 - Mission Log — entered and skipped tracking.
 - Flight Plan — daily schedule and reminders.
 - Co-Pilot — AI research assistant.

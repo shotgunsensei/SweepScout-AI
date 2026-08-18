@@ -502,7 +502,7 @@ router.get("/reports/compliance.csv", handler(async (_req, res) => {
   await assertFeatureAllowed("advancedReporting");
   const report = await getComplianceReport();
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
-  res.setHeader("Content-Disposition", 'attachment; filename="sweepscout-compliance-reports.csv"');
+  res.setHeader("Content-Disposition", 'attachment; filename="play-pack-pilot-research-reports.csv"');
   res.status(200).send(complianceReportToCsv(report));
 }));
 
@@ -571,7 +571,7 @@ router.get("/admin/export/entries", handler(async (req, res) => {
   const entries = await store.listEntryLogs();
   const csv = entriesToCsv(entries);
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
-  res.setHeader("Content-Disposition", 'attachment; filename="sweepscout-entries.csv"');
+  res.setHeader("Content-Disposition", 'attachment; filename="play-pack-pilot-entries.csv"');
   res.status(200).send(csv);
 }));
 

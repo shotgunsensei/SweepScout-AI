@@ -109,8 +109,8 @@ export function DeadlineBadge({ value }: { value: string | null }) {
 
 export function PrizeCard({ item }: { item: Sweepstake }) {
   return (
-    <div className="rounded-lg border border-line/85 bg-[linear-gradient(145deg,rgba(79,224,176,0.12),rgba(24,34,37,0.88))] p-4">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-accent">
+    <div className="rounded-lg border border-reward/30 bg-[linear-gradient(145deg,hsl(var(--reward)/0.12),hsl(var(--panel)/0.88))] p-4">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-reward">
         <DollarSign size={15} aria-hidden="true" />
         Prize Value
       </div>
@@ -155,7 +155,7 @@ export function SubmitButton(props: { children: React.ReactNode; tone?: "primary
         "inline-flex min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60",
         props.tone === "danger" && "bg-danger/15 text-danger",
         props.tone === "secondary" && "border border-line bg-panel-strong text-foreground",
-        (!props.tone || props.tone === "primary") && "bg-accent text-[#08110e]",
+        (!props.tone || props.tone === "primary") && "bg-accent text-background-deep",
       )}
       type="submit"
       disabled={props.disabled}

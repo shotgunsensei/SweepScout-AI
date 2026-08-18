@@ -137,7 +137,7 @@ export async function saveExtensionPage(rawInput: unknown) {
     created: true,
     sweepstake: aliasAssignment.sweepstake,
     score: analysis.score,
-    message: "Sweepstake saved to SweepScout.",
+    message: "Sweepstake saved to Play Pack Pilot.",
   };
 }
 

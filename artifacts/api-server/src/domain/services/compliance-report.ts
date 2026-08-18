@@ -15,7 +15,7 @@ export async function getComplianceSweepstakeReport(sweepstakeId: string) {
   const report = await getComplianceReport();
   const item = report.reports.find((candidate) => candidate.sweepstakeId === sweepstakeId);
   if (!item) {
-    throw new Error("Sweepstake compliance report not found.");
+    throw new Error("Sweepstakes research report not found.");
   }
   return item;
 }
@@ -30,7 +30,7 @@ export function complianceSweepstakeReportToCsv(report: ComplianceSweepstakeRepo
 
 export function complianceSweepstakeReportToPdf(report: ComplianceSweepstakeReport) {
   const lines = [
-    "SweepScout Compliance Report",
+    "Play Pack Pilot Research Report",
     `Generated: ${formatDateTime(report.generatedAt)}`,
     "",
     `Sweepstake: ${report.title}`,

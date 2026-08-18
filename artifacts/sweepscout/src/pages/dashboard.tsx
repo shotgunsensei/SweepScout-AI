@@ -1,4 +1,4 @@
-import { ArrowRight, Bot, CheckCircle2, Clock3, MailWarning, ScrollText, ShieldAlert, Trophy } from "lucide-react";
+import { ArrowRight, Bot, CheckCircle2, ScrollText, ShieldAlert, Trophy } from "lucide-react";
 import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
@@ -15,14 +15,14 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <PageHeader
-        title="Trust Dashboard"
-        kicker="AI sweepstakes command center"
-        description="A high-trust operating view for opportunity value, eligibility, deadlines, inbox alerts, and manual approval workflows."
+        title="Flight Deck"
+        kicker="Today's opportunity plan"
+        description="Review the best-fit opportunities, urgent deadlines, and safety signals before visiting a sponsor's official sweepstakes."
       >
-        <Link href="/dashboard/assistant" className="inline-flex h-9 items-center gap-2 rounded-md border border-line bg-panel-strong px-3 text-sm font-medium text-foreground hover:border-accent/50">
+        <Link href="/dashboard/assistant" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line bg-panel-strong px-3 text-sm font-medium text-foreground hover:border-accent/50">
           Ask AI <Bot size={16} aria-hidden="true" />
         </Link>
-        <Link href="/dashboard/queue" className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-[#07100d]">
+        <Link href="/dashboard/queue" className="inline-flex min-h-10 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-background-deep hover:bg-accent-strong">
           Review Queue <ArrowRight size={16} aria-hidden="true" />
         </Link>
       </PageHeader>
@@ -44,7 +44,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
 
   return (
     <>
-      <Panel className="mb-5 overflow-hidden border-accent/20 bg-[linear-gradient(135deg,rgba(79,224,176,0.13),rgba(17,24,27,0.92)_48%)]">
+      <Panel className="mb-5 overflow-hidden border-accent/20 bg-[linear-gradient(135deg,hsl(var(--accent)/0.13),hsl(var(--panel)/0.92)_48%)]">
         <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <div className="mb-3 flex flex-wrap gap-2">
@@ -52,9 +52,9 @@ function DashboardBody({ data }: { data: DashboardData }) {
               <Badge>Discovery + scoring + inbox</Badge>
               <Badge tone="warn">No auto-submit</Badge>
             </div>
-            <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Today’s sweepstakes operating picture</h2>
+            <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Today’s flight plan</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-              Prioritize high-value entries, resolve winner alerts, and keep compliance decisions visible before any manual submission.
+              Focus on the opportunities worth your time, resolve alerts, and review the official rules before taking action.
             </p>
           </div>
           <div className="grid min-w-72 gap-3 sm:grid-cols-3 lg:grid-cols-1">
@@ -65,21 +65,17 @@ function DashboardBody({ data }: { data: DashboardData }) {
         </div>
       </Panel>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Eligible Today" value={eligibleToday} sublabel="ready after review" tone="ok" />
         <MetricCard label="Ending Soon" value={data.stats.endingSoon} sublabel="within 7 days" tone={data.stats.endingSoon ? "warn" : "default"} />
         <MetricCard label="Winner Alerts" value={data.stats.inboxWinnerAlerts} sublabel="review required" tone={data.stats.inboxWinnerAlerts ? "warn" : "default"} />
         <MetricCard label="Risk Flags" value={data.stats.highRiskCount} sublabel="above threshold" tone={data.stats.highRiskCount ? "danger" : "default"} />
-        <MetricCard label="Total Entries" value={data.entryLogs.length} sublabel={`${data.stats.entriesThisWeek} this week`} />
-        <MetricCard label="Prize Value" value={new Intl.NumberFormat("en-US", { notation: "compact", style: "currency", currency: "USD", maximumFractionDigits: 1 }).format(totalPrizeValue)} />
-        <MetricCard label="Inbox" value={data.stats.inboxNewAlerts} sublabel="new alerts" />
-        <MetricCard label="Avg Eligibility" value={`${data.stats.averageEligibilityScore}%`} />
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
         <Panel>
           <SectionHeader
-            title="Priority Sweepstakes"
+            title="Priority opportunities"
             eyebrow="Highest attention first"
             action={<Link href="/dashboard/sweepstakes" className="text-sm text-accent">View all</Link>}
           />
@@ -87,26 +83,20 @@ function DashboardBody({ data }: { data: DashboardData }) {
             {priority.length ? (
               priority.map((item) => <SweepstakeCard key={item.id} item={item} compact />)
             ) : (
-              <EmptyState title="No sweepstakes yet" body="Run discovery or add candidates to start compliance review." />
+              <EmptyState title="No opportunities yet" body="Run Source Radar or add a candidate to begin reviewing official rules." image="/brand/illustrations/play-pack-pilot-radar-empty.webp" />
             )}
           </div>
         </Panel>
 
         <div className="grid gap-4">
           <Panel>
-            <SectionHeader title="Compliance Locks" eyebrow="Always-on guardrails" />
+            <SectionHeader title="Safety checks" eyebrow="Always-on guardrails" />
             <div className="grid gap-3 text-sm">
               <div className="flex items-center gap-2 text-ok">
                 <CheckCircle2 size={17} aria-hidden="true" /> Explicit approval required
               </div>
               <div className="flex items-center gap-2 text-warning">
                 <ShieldAlert size={17} aria-hidden="true" /> CAPTCHA/manual blocks preserved
-              </div>
-              <div className="flex items-center gap-2 text-muted">
-                <Clock3 size={17} aria-hidden="true" /> Daily limit {data.settings.dailyEntryLimit}
-              </div>
-              <div className="flex items-center gap-2 text-muted">
-                <MailWarning size={17} aria-hidden="true" /> Inbox links stay review-only
               </div>
               <div className="flex items-center gap-2 text-muted">
                 <ScrollText size={17} aria-hidden="true" /> Official rules changes require review
@@ -219,7 +209,7 @@ function RulesAlertCard({
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <button
-          className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-xs font-medium text-[#07100d] disabled:opacity-60"
+          className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-xs font-medium text-background-deep disabled:opacity-60 hover:bg-accent-strong"
           type="button"
           disabled={busy}
           onClick={() => onReview("reviewed")}
@@ -321,7 +311,7 @@ function InboxAlertCard({
       {alert.riskFlags.length ? <p className="mt-3 text-xs text-danger">{alert.riskFlags[0]}</p> : null}
       <div className="mt-3 flex flex-wrap gap-2">
         <button
-          className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-xs font-medium text-[#07100d] disabled:opacity-60"
+          className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-xs font-medium text-background-deep disabled:opacity-60 hover:bg-accent-strong"
           type="button"
           disabled={busy}
           onClick={() => onReview("reviewed")}

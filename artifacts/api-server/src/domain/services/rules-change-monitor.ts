@@ -16,7 +16,7 @@ import type {
 } from "@/lib/types";
 import { logger } from "../../lib/logger";
 
-const USER_AGENT = "SweepScoutAI/0.1 read-only rules monitor (+https://localhost)";
+const USER_AGENT = "PlayPackPilot/0.1 read-only rules monitor (+https://localhost)";
 const FETCH_TIMEOUT_MS = 12_000;
 const MAX_PAGE_BYTES = 900_000;
 const MAX_REDIRECTS = 5;

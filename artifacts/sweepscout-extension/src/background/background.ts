@@ -62,7 +62,7 @@ async function handleMessage(message: BgMessage) {
     case "SWEEPSCOUT_SAVE_PAGE":
       return postApi("/extension/save", message.analysis ?? {});
     default:
-      throw new Error("Unknown SweepScout extension message.");
+      throw new Error("Unknown Play Pack Pilot extension message.");
   }
 }
 
@@ -90,7 +90,7 @@ async function syncApprovedProfile() {
   }>("/profile");
 
   if (!profile.consentToPrefill) {
-    throw new Error("Enable prefill consent in the SweepScout profile vault before syncing the extension profile.");
+    throw new Error("Enable prefill consent in the Play Pack Pilot profile vault before syncing the extension profile.");
   }
 
   const approvedProfile: BgApprovedProfile = {
@@ -144,7 +144,7 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
     }
   }
   if (!response.ok || !envelope || !envelope.ok) {
-    const error = envelope && !envelope.ok ? envelope.error : response.statusText || "SweepScout API request failed.";
+    const error = envelope && !envelope.ok ? envelope.error : response.statusText || "Play Pack Pilot API request failed.";
     throw new Error(error);
   }
   return envelope.data;

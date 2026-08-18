@@ -2,22 +2,26 @@ import { AlertCircle, Inbox, Loader2 } from "lucide-react";
 import { LoadingSkeleton, Panel } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
-export function EmptyState(props: { title: string; body: string; action?: React.ReactNode }) {
+export function EmptyState(props: { title: string; body: string; action?: React.ReactNode; image?: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-line bg-panel-strong/55 p-6 text-center">
-      <div className="mx-auto flex size-10 items-center justify-center rounded-md border border-line bg-panel">
-        <Inbox size={18} aria-hidden />
-      </div>
-      <h3 className="mt-3 text-balance text-sm font-semibold text-foreground">{props.title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-pretty text-sm leading-6 text-muted">{props.body}</p>
-      {props.action ? <div className="mt-4 flex justify-center">{props.action}</div> : null}
+    <div className="rounded-xl border border-dashed border-line bg-panel-strong/30 p-8 text-center">
+      {props.image ? (
+        <img src={props.image} alt="" className="mx-auto mb-5 h-32 w-32 rounded-full object-cover opacity-80 mix-blend-screen" />
+      ) : (
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-xl border border-line bg-panel">
+          <Inbox size={20} className="text-muted" aria-hidden />
+        </div>
+      )}
+      <h3 className="mx-auto text-balance text-base font-semibold text-foreground">{props.title}</h3>
+      <p className="mx-auto mt-2 max-w-sm text-pretty text-sm leading-6 text-muted">{props.body}</p>
+      {props.action ? <div className="mt-5 flex justify-center">{props.action}</div> : null}
     </div>
   );
 }
 
 export function LoadingState(props: { title?: string }) {
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4" role="status" aria-live="polite">
       <div className="flex items-center gap-3 rounded-md border border-line bg-panel px-4 py-3 text-sm text-muted">
         <Loader2 className="animate-spin text-accent" size={17} aria-hidden />
         {props.title ?? "Loading Play Pack Pilot"}
@@ -29,7 +33,7 @@ export function LoadingState(props: { title?: string }) {
 
 export function ErrorNotice(props: { title: string; body: string; action?: React.ReactNode }) {
   return (
-    <Panel>
+    <Panel role="alert">
       <div className="flex items-start gap-3">
         <AlertCircle className="mt-0.5 text-warning" size={20} aria-hidden />
         <div>

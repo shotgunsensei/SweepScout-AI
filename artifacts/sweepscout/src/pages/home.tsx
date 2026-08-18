@@ -151,7 +151,7 @@ function PublicNavigation() {
             className="h-14 w-24 shrink-0 object-contain object-center"
           />
           <span className="hidden min-w-0 sm:block">
-            <span className="block font-display text-sm font-extrabold tracking-[0.08em]">PLAY PACK PILOT</span>
+            <span className="block font-display text-sm font-bold tracking-[0.08em]">PLAY PACK PILOT</span>
             <span className="block text-[11px] text-muted">AI sweepstakes discovery</span>
           </span>
         </a>
@@ -171,7 +171,7 @@ function PublicNavigation() {
           </Link>
           <Link
             href="/signup"
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-reward px-5 text-sm font-extrabold text-[#111827] shadow-[0_0_28px_rgb(251_191_36_/_0.18)] transition hover:-translate-y-0.5 hover:bg-[#ffd45a]"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-accent px-5 text-sm font-semibold text-background-deep shadow-sm transition hover:-translate-y-0.5 hover:bg-accent-strong"
           >
             Get Started <ArrowRight size={16} aria-hidden="true" />
           </Link>
@@ -188,49 +188,49 @@ function Hero() {
   return (
     <section id="top" className="relative isolate border-b border-line/60">
       <div className="flight-grid pointer-events-none absolute inset-0 -z-10" />
-      <div className="pointer-events-none absolute left-1/2 top-20 -z-10 h-[32rem] w-[50rem] -translate-x-1/2 rounded-full bg-accent-strong/15 blur-[110px]" />
+      <div className="pointer-events-none absolute left-1/2 top-20 -z-10 h-[32rem] w-[50rem] -translate-x-1/2 rounded-full bg-accent/5 blur-[110px]" />
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:py-24">
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-accent">
-            <Radar size={14} aria-hidden="true" /> AI-powered opportunity radar
+          <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-accent">
+            <Radar size={14} aria-hidden="true" /> AI sweepstakes discovery
           </div>
-          <h1 className="mt-6 max-w-3xl text-balance font-display text-5xl font-extrabold leading-[1.02] sm:text-6xl lg:text-7xl">
+          <h1 className="mt-6 max-w-3xl text-balance font-display text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
             Discover More.
             <span className="block text-accent">Miss Less.</span>
-            <span className="block text-reward">Enter Smarter.</span>
+            <span className="block text-foreground">Enter Smarter.</span>
           </h1>
           <p className="mt-6 max-w-2xl text-pretty text-lg leading-8 text-muted">
             Play Pack Pilot scans approved sources for sweepstakes and giveaways, analyzes the rules, and helps you focus on opportunities that match your eligibility, interests, and available time.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/signup" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-reward px-6 text-sm font-extrabold text-[#111827] transition hover:-translate-y-0.5 hover:bg-[#ffd45a]">
+            <Link href="/signup" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-foreground px-6 text-sm font-semibold text-foreground-inverse transition hover:-translate-y-0.5 hover:bg-foreground/90">
               Start Scanning <Radar size={17} aria-hidden="true" />
             </Link>
-            <a href="#how-it-works" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-accent-strong bg-panel/55 px-6 text-sm font-bold transition hover:border-accent hover:bg-panel">
+            <a href="#how-it-works" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-line bg-panel/55 px-6 text-sm font-semibold transition hover:border-accent hover:bg-panel">
               See How It Works <ArrowRight size={17} aria-hidden="true" />
             </a>
           </div>
           <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted">
             <TrustPoint text="Direct sponsor links" />
             <TrustPoint text="No paid entries" />
-            <TrustPoint text="No automatic submissions" />
+            <TrustPoint text="Every entry stays user-controlled" />
           </div>
         </div>
 
         <div className="relative mx-auto w-full max-w-2xl">
           <div className="absolute inset-x-10 top-1/4 h-1/2 rounded-full bg-accent/20 blur-[90px]" />
           <img
-            src="/brand/play-pack-pilot-logo-original.png"
-            alt="Play Pack Pilot — AI Sweepstakes SaaS"
-            className="relative z-10 aspect-square w-full object-contain drop-shadow-[0_34px_70px_rgb(0_0_0_/_0.58)]"
+            src="/brand/illustrations/play-pack-pilot-hero.webp"
+            alt="A refined flight deck scanning a radar horizon for new opportunities"
+            className="relative z-10 aspect-square w-full rounded-3xl object-cover border border-line shadow-2xl"
           />
-          <div className="absolute bottom-[8%] left-[8%] z-20 rounded-2xl border border-line bg-surface-glass p-3 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-4">
+          <div className="absolute bottom-[8%] left-[8%] z-20 rounded-2xl border border-line bg-surface-glass p-3 shadow-lg backdrop-blur-xl sm:p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Radar status</p>
-            <p className="mt-1 flex items-center gap-2 text-sm font-bold"><span className="size-2 rounded-full bg-ok shadow-[0_0_12px_var(--ok)]" /> Approved sources online</p>
+            <p className="mt-1 flex items-center gap-2 text-sm font-semibold"><span className="size-2 rounded-full bg-ok shadow-[0_0_12px_hsl(var(--ok))]" /> Approved sources online</p>
           </div>
-          <div className="absolute right-[3%] top-[14%] z-20 rounded-2xl border border-reward/30 bg-surface-glass p-3 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-4">
+          <div className="absolute right-[3%] top-[14%] z-20 rounded-2xl border border-reward/30 bg-surface-glass p-3 shadow-lg backdrop-blur-xl sm:p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Best match</p>
-            <p className="mt-1 text-2xl font-extrabold text-reward">94%</p>
+            <p className="mt-1 text-2xl font-bold text-reward">94%</p>
           </div>
         </div>
       </div>
@@ -251,7 +251,7 @@ function ProductPreview() {
         <div className="mt-10 overflow-hidden rounded-[2rem] border border-line bg-navigation shadow-[var(--shadow-soft)]">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-7">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-accent-strong text-white"><Radar size={20} aria-hidden="true" /></div>
+              <div className="flex size-10 items-center justify-center rounded-xl bg-accent-strong text-background-deep"><Radar size={20} aria-hidden="true" /></div>
               <div>
                 <p className="font-display text-sm font-extrabold">RADAR</p>
                 <p className="text-xs text-muted">Personalized opportunity feed</p>
@@ -269,7 +269,7 @@ function ProductPreview() {
                 ["Flight Plan", false],
                 ["Co-Pilot", false],
               ].map(([label, active]) => (
-                <div key={String(label)} className={`mb-1 rounded-xl px-3 py-2.5 text-sm ${active ? "bg-accent-strong text-white" : "text-muted"}`}>{label}</div>
+                <div key={String(label)} className={`mb-1 rounded-xl px-3 py-2.5 text-sm ${active ? "bg-accent-strong text-background-deep" : "text-muted"}`}>{label}</div>
               ))}
             </aside>
             <div className="p-5 sm:p-7">
@@ -378,16 +378,16 @@ function PricingSection() {
         <SectionHeading eyebrow="Choose your altitude" title="Start free. Upgrade when deeper analysis earns its seat." copy="All plans keep sponsor links and normal browsing outside the Pilot Credit meter. Annual pricing is available for paid plans." id="pricing-heading" />
         <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => (
-            <article key={plan.name} className={`relative flex flex-col rounded-3xl border p-6 ${plan.featured ? "border-reward bg-[linear-gradient(160deg,rgb(251_191_36_/_0.12),rgb(16_30_50_/_0.96)_38%)] shadow-[0_24px_70px_rgb(251_191_36_/_0.12)]" : "border-line bg-panel/70"}`}>
-              {plan.featured ? <span className="absolute -top-3 left-6 rounded-full bg-reward px-3 py-1 text-xs font-extrabold text-[#111827]">Most popular</span> : null}
-              <h3 className="font-display text-lg font-extrabold">{plan.name}</h3>
+            <article key={plan.name} className={`relative flex flex-col rounded-3xl border p-6 transition ${plan.featured ? "border-accent bg-panel-strong shadow-[0_24px_70px_hsl(var(--accent)/0.12)]" : "border-line bg-panel/70"}`}>
+              {plan.featured ? <span className="absolute -top-3 left-6 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-background-deep">Most popular</span> : null}
+              <h3 className="font-display text-lg font-bold">{plan.name}</h3>
               <p className="mt-3 min-h-12 text-sm leading-6 text-muted">{plan.description}</p>
-              <p className="mt-5"><span className="text-4xl font-extrabold">{plan.price}</span> <span className="text-sm text-muted">{plan.cadence}</span></p>
-              <p className="mt-3 text-sm font-bold text-accent">{plan.credits}</p>
+              <p className="mt-5"><span className="text-4xl font-bold">{plan.price}</span> <span className="text-sm text-muted">{plan.cadence}</span></p>
+              <p className="mt-3 text-sm font-semibold text-accent">{plan.credits}</p>
               <ul className="mt-6 space-y-3 text-sm text-muted">
                 {plan.features.map((feature) => <li key={feature} className="flex gap-2"><Check className="mt-0.5 shrink-0 text-ok" size={16} aria-hidden="true" />{feature}</li>)}
               </ul>
-              <Link href="/signup" className={`mt-8 inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-extrabold transition hover:-translate-y-0.5 ${plan.featured ? "bg-reward text-[#111827]" : "border border-accent-strong bg-panel-strong text-foreground hover:border-accent"}`}>
+              <Link href="/signup" className={`mt-8 inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition hover:-translate-y-0.5 ${plan.featured ? "bg-foreground text-foreground-inverse" : "border border-line bg-panel-strong text-foreground hover:border-accent"}`}>
                 {plan.cta}
               </Link>
             </article>
@@ -420,12 +420,12 @@ function FaqSection() {
 function FinalCallToAction() {
   return (
     <section className="relative py-20 sm:py-24">
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 bg-[radial-gradient(ellipse_at_bottom,rgb(37_99_235_/_0.26),transparent_68%)]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 bg-[radial-gradient(ellipse_at_bottom,hsl(var(--accent)/0.15),transparent_68%)]" />
       <div className="relative mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
-        <Trophy className="mx-auto text-reward" size={42} aria-hidden="true" />
-        <h2 className="mt-5 text-balance font-display text-4xl font-extrabold sm:text-5xl">Ready to put better opportunities on your radar?</h2>
+        <Radar className="mx-auto text-accent" size={42} aria-hidden="true" />
+        <h2 className="mt-5 text-balance font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Ready to put better opportunities on your radar?</h2>
         <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg leading-8 text-muted">Start with discovery, build your Hangar, and let Co-Pilot help you decide where your time is best spent.</p>
-        <Link href="/signup" className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-full bg-reward px-7 text-sm font-extrabold text-[#111827] transition hover:-translate-y-0.5 hover:bg-[#ffd45a]">Start Scanning <ArrowRight size={17} aria-hidden="true" /></Link>
+        <Link href="/signup" className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-full bg-foreground px-7 text-sm font-semibold text-foreground-inverse transition hover:-translate-y-0.5 hover:bg-foreground/90">Start Scanning <ArrowRight size={17} aria-hidden="true" /></Link>
       </div>
     </section>
   );
@@ -436,8 +436,8 @@ function PublicFooter() {
     <footer className="border-t border-line bg-navigation py-10">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
         <div className="flex items-center gap-3">
-          <img src="/brand/play-pack-pilot-logo-original.png" alt="Play Pack Pilot" className="h-16 w-24 object-contain" />
-          <div><p className="font-display text-sm font-extrabold">PLAY PACK PILOT</p><p className="mt-1 text-xs text-muted">Discovery and research—not the promotion sponsor.</p></div>
+          <img src="/brand/play-pack-pilot-logo-original.png" alt="Play Pack Pilot" className="h-12 w-20 object-contain" />
+          <div><p className="font-display text-sm font-bold tracking-[0.08em]">PLAY PACK PILOT</p><p className="mt-1 text-xs text-muted">Discovery and research—not the promotion sponsor.</p></div>
         </div>
         <nav className="flex flex-wrap gap-x-5 gap-y-3 text-sm text-muted" aria-label="Footer">
           <a href="#features" className="hover:text-foreground">Features</a>
@@ -471,7 +471,7 @@ function TrustPoint({ text }: { text: string }) {
 
 function PreviewMetric({ label, value, note, tone }: { label: string; value: string; note: string; tone: "cyan" | "gold" | "violet" }) {
   const color = tone === "cyan" ? "text-accent" : tone === "gold" ? "text-reward" : "text-[#a78bfa]";
-  return <div className="rounded-2xl border border-line bg-panel p-4"><p className="text-xs text-muted">{label}</p><p className={`mt-2 text-3xl font-extrabold ${color}`}>{value}</p><p className="mt-1 text-xs text-muted">{note}</p></div>;
+  return <div className="rounded-2xl border border-line bg-panel p-4"><p className="text-xs text-muted">{label}</p><p className={`mt-2 text-3xl font-bold ${color}`}>{value}</p><p className="mt-1 text-xs text-muted">{note}</p></div>;
 }
 
 function OpportunityPreview({ title, sponsor, prize, match, deadline, risk }: { title: string; sponsor: string; prize: string; match: string; deadline: string; risk: string }) {

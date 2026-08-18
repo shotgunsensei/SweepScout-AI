@@ -17,7 +17,7 @@ export default function DiscoveryPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Discovery Jobs" kicker="Search-result discovery, no form submission">
+      <PageHeader title="Source Radar" kicker="Search-result discovery, no form submission">
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -72,7 +72,7 @@ export default function DiscoveryPage() {
             jobs.map((job) => <DiscoveryCard key={job.id} job={job} />)
           ) : (
             <div className="lg:col-span-2">
-              <EmptyState title="No discovery jobs" body="Create or seed discovery jobs to begin collecting safe candidate URLs." action={<Radar size={18} className="text-accent" aria-hidden />} />
+              <EmptyState title="No discovery jobs" body="Create or seed discovery jobs to begin collecting safe candidate URLs." />
             </div>
           )}
         </div>

@@ -57,7 +57,7 @@ function SettingsForm({ settings, config }: { settings: AppSettings; config: App
           value
           disabled
           onValueChange={() => undefined}
-          hint="This control is locked. SweepScout never submits entries without explicit user review and approval."
+          hint="This control is locked. Play Pack Pilot never submits entries without explicit user review and approval."
         />
       </Card>
 

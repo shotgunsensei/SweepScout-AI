@@ -183,7 +183,7 @@ function buildDeterministicAnswer(input: z.infer<typeof assistantRequestSchema>,
   if (input.intent === "recommend_today") return recommendTodayAnswer(context);
   if (!context.primary) {
     return {
-      answer: "Select a stored sweepstakes record so SweepScout can answer using saved rules and scoring data.",
+      answer: "Select a stored sweepstakes record so Play Pack Pilot can answer using saved rules and scoring data.",
       bullets: ["No sweepstakes record was selected for this assistant request."],
       warnings: ["The assistant does not answer from general web knowledge."],
       missingInformation: ["Selected sweepstakes record"],
@@ -303,7 +303,7 @@ function checklistAnswer(sweepstake: Sweepstake) {
       `Confirm deadline and frequency: ${sweepstake.endAt ?? "deadline not captured"}; ${sweepstake.entryFrequency || "frequency not captured"}.`,
       "Confirm no purchase, payment, SSN, banking, or unsupported sensitive data is requested before winner verification.",
       "Complete CAPTCHA, account login, terms, and final submit manually.",
-      "Record the submission timestamp and confirmation code in SweepScout after submission.",
+      "Record the submission timestamp and confirmation code in Play Pack Pilot after submission.",
     ],
     warnings: safetyWarnings(sweepstake),
     missingInformation: missingFields(sweepstake),
@@ -316,7 +316,7 @@ function missingInfoAnswer(sweepstake: Sweepstake) {
   return {
     answer: missing.length
       ? `${sweepstake.title} is missing ${missing.length} important field${missing.length === 1 ? "" : "s"} before confident entry.`
-      : `${sweepstake.title} has the core rules fields captured in SweepScout.`,
+      : `${sweepstake.title} has the core rules fields captured in Play Pack Pilot.`,
     bullets: missing.length ? missing : ["Official rules URL, deadline, eligibility, prize, and entry frequency are present."],
     warnings: safetyWarnings(sweepstake),
     missingInformation: missing,
@@ -334,7 +334,7 @@ function recommendTodayAnswer(context: AssistantContext) {
       (item, index) =>
         `${index + 1}. ${item.sweepstake.title}: ${money(item.sweepstake.prizeRetailValue)}, eligibility ${item.sweepstake.eligibilityScore}, risk ${item.sweepstake.scamScore}, ${item.frequencyLabel}.`,
     ),
-    warnings: ["Manual approval remains required. SweepScout does not submit entries or bypass CAPTCHA."],
+    warnings: ["Manual approval remains required. Play Pack Pilot does not submit entries or bypass CAPTCHA."],
     missingInformation: [],
     recommendedSweepstakeIds: recommendations.map((item) => item.sweepstake.id),
   };
@@ -344,7 +344,7 @@ function generalAnswer(sweepstake: Sweepstake, question?: string) {
   const risk = riskAnswer(sweepstake);
   return {
     answer: question
-      ? `Using the stored record for ${sweepstake.title}, SweepScout can answer this from the captured risk, eligibility, and rules data.`
+      ? `Using the stored record for ${sweepstake.title}, Play Pack Pilot can answer this from the captured risk, eligibility, and rules data.`
       : risk.answer,
     bullets: risk.bullets,
     warnings: risk.warnings,
@@ -369,7 +369,7 @@ async function answerWithOpenAI(
     body: JSON.stringify({
       model: config.openaiModel,
       instructions:
-        "You are the SweepScout AI assistant. Answer only from SOURCE CONTEXT. If the context does not contain a fact, say it is missing. Never advise auto-submit, CAPTCHA bypass, purchases, payment entry, SSN storage, or opening claim links without user review. Return JSON only.",
+        "You are Play Pack Pilot Co-Pilot, an AI sweepstakes research assistant. Answer only from SOURCE CONTEXT. If the context does not contain a fact, say it is missing. Never advise auto-submit, CAPTCHA bypass, purchases, payment entry, SSN storage, or opening claim links without user review. Return JSON only.",
       input: [
         {
           role: "user",

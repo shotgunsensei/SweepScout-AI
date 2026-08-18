@@ -24,7 +24,7 @@ export default function OperationsScreen() {
           </Card>
 
           <Card>
-            <SectionHeader title="Safety Posture" eyebrow="SweepScout mobile mirrors the web guardrails" />
+            <SectionHeader title="Safety Posture" eyebrow="Play Pack Pilot mobile mirrors the web guardrails" />
             <View style={styles.wrap}>
               <Radar color={colors.accent} size={20} />
               <FileSearch color={colors.accent} size={20} />

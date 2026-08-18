@@ -59,17 +59,22 @@ export default function OnboardingPage() {
   return (
     <main className="min-h-dvh bg-background px-4 py-8 text-foreground sm:px-6">
       <form onSubmit={submit} className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-line bg-panel shadow-[var(--shadow-soft)]">
-        <header className="border-b border-line bg-[linear-gradient(135deg,rgba(37,99,235,0.22),rgba(124,58,237,0.13),transparent)] p-6 sm:p-8">
-          <div className="flex items-center gap-4"><img src="/brand/play-pack-pilot-logo-original.png" alt="" className="h-20 w-28 object-contain" /><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Preflight setup</p><h1 className="mt-1 font-display text-2xl font-extrabold sm:text-3xl">Tune your opportunity radar</h1></div></div>
+        <header className="border-b border-line bg-[linear-gradient(135deg,hsl(var(--accent)/0.12),transparent)] p-6 sm:p-8">
+          <div className="flex items-center gap-4"><img src="/brand/play-pack-pilot-logo-original.png" alt="" className="h-12 w-16 object-contain" /><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Preflight setup</p><h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">Tune your opportunity radar</h1></div></div>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">These private details help filter promotions you can actually enter. Your full birth date stays in your private profile and is never included in public listings.</p>
         </header>
         <div className="grid gap-7 p-6 sm:p-8">
-          <section className="grid gap-4 sm:grid-cols-2">
+          <div className="relative">
+            <div className="absolute right-0 top-0 hidden lg:block opacity-60 pointer-events-none mix-blend-screen">
+              <img src="/brand/illustrations/play-pack-pilot-preflight.webp" alt="" className="h-48 w-48 object-cover rounded-full" />
+            </div>
+            <section className="grid gap-4 sm:grid-cols-2 relative z-10 lg:w-3/4">
             <Field label="Display name" value={displayName} onChange={setDisplayName} />
             <Field label="Birth date" type="date" value={birthDate} onChange={setBirthDate} />
             <Field label="Country code" value={countryCode} onChange={setCountryCode} maxLength={2} />
             <Field label="State or region" value={stateOrRegion} onChange={setStateOrRegion} />
-          </section>
+            </section>
+          </div>
           <section>
             <h2 className="font-display text-lg font-bold">Prize interests</h2>
             <div className="mt-3 flex flex-wrap gap-2">{prizeCategories.map((category) => <button key={category} type="button" onClick={() => toggleCategory(category)} className={`rounded-full border px-3 py-2 text-sm transition ${categories.includes(category) ? "border-accent bg-accent/15 text-accent" : "border-line bg-panel-strong text-muted hover:text-foreground"}`}>{category}</button>)}</div>
@@ -86,7 +91,7 @@ export default function OnboardingPage() {
             <Check label="I understand Play Pack Pilot is a discovery and organization service—not the sponsor or administrator of listed promotions." checked={acceptSponsorDisclaimer} onChange={setAcceptSponsorDisclaimer} />
           </section>
           {error ? <p className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger" role="alert">{error}</p> : null}
-          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center"><p className="max-w-xl text-xs leading-5 text-muted"><ShieldCheck size={14} className="mr-1 inline" /> Eligibility data is private and only used to personalize your results.</p><button disabled={busy || !minimumAgeConfirmed || !acceptTerms || !acceptPrivacy || !acceptSponsorDisclaimer} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent px-5 font-semibold text-accent-foreground disabled:opacity-50"><PlaneTakeoff size={18} />{busy ? "Saving…" : "Launch my flight deck"}</button></div>
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center"><p className="max-w-xl text-xs leading-5 text-muted"><ShieldCheck size={14} className="mr-1 inline" /> Eligibility data is private and only used to personalize your results.</p><button disabled={busy || !minimumAgeConfirmed || !acceptTerms || !acceptPrivacy || !acceptSponsorDisclaimer} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-foreground px-5 font-semibold text-foreground-inverse hover:bg-foreground/90 disabled:opacity-50"><PlaneTakeoff size={18} />{busy ? "Saving…" : "Launch my flight deck"}</button></div>
         </div>
       </form>
     </main>

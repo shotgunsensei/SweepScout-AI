@@ -97,7 +97,7 @@ async function ssHandleMessage(message: { type?: string }) {
   if (message.type === "SWEEPSCOUT_PREFILL_FROM_POPUP") {
     return ssPrefillFromApprovedProfile();
   }
-  throw new Error("Unknown SweepScout content message.");
+  throw new Error("Unknown Play Pack Pilot content message.");
 }
 
 function ssRefreshAnalysis() {
@@ -219,7 +219,7 @@ async function ssSavePage() {
 async function ssPrefillFromApprovedProfile() {
   const profile = await ssRuntime<SsApprovedProfile | null>("SWEEPSCOUT_GET_PROFILE");
   if (!profile) {
-    throw new Error("Sync an approved SweepScout profile from the extension popup before prefilling.");
+    throw new Error("Sync an approved Play Pack Pilot profile from the extension popup before prefilling.");
   }
   const results = ssFillProfileFields(profile);
   const blocked = ssCurrentAnalysis.suspiciousFields.length;
@@ -346,8 +346,8 @@ function ssRenderOverlay() {
 
   ssOverlay.innerHTML = `
     <div class="sweepscout-head">
-      <p class="sweepscout-title">SweepScout</p>
-      <button class="sweepscout-icon-button" type="button" data-ss-action="minimize" aria-label="Minimize SweepScout">-</button>
+      <p class="sweepscout-title">Play Pack Pilot</p>
+      <button class="sweepscout-icon-button" type="button" data-ss-action="minimize" aria-label="Minimize Play Pack Pilot">-</button>
     </div>
     <div class="sweepscout-body">
       <div class="sweepscout-row">
@@ -360,7 +360,7 @@ function ssRenderOverlay() {
         ${ssCurrentAnalysis.suspiciousFields.length ? `<span class="sweepscout-chip danger">${ssCurrentAnalysis.suspiciousFields.length} sensitive field${ssCurrentAnalysis.suspiciousFields.length === 1 ? "" : "s"}</span>` : ""}
       </div>
       <div class="sweepscout-actions">
-        <button class="sweepscout-button primary" type="button" data-ss-action="save">Save to SweepScout</button>
+        <button class="sweepscout-button primary" type="button" data-ss-action="save">Save to Play Pack Pilot</button>
         <button class="sweepscout-button" type="button" data-ss-action="prefill">Prefill Profile</button>
       </div>
       <p class="sweepscout-note">Manual submit only. SSN, banking, payment, terms, consent, and CAPTCHA fields stay manual.</p>
@@ -432,7 +432,7 @@ function ssMarkSubmitControls() {
   );
   for (const control of submitControls) {
     control.classList.add("sweepscout-submit-field");
-    control.setAttribute("title", "SweepScout does not click submit. Review and submit manually only if you approve.");
+    control.setAttribute("title", "Play Pack Pilot does not click submit. Review and submit manually only if you approve.");
   }
 }
 
@@ -505,9 +505,9 @@ function ssSensitiveKind(field: SsPageField): SsSensitiveKind | null {
 function ssSensitiveWarning(kind: SsSensitiveKind) {
   const labels: Record<SsSensitiveKind, string> = {
     ssn: "SSN field detected. Do not provide SSN before verified winner claim review.",
-    banking: "Banking field detected. SweepScout will not fill bank or routing details.",
+    banking: "Banking field detected. Play Pack Pilot will not fill bank or routing details.",
     payment: "Payment field detected. Review official rules and no-purchase method before continuing.",
-    password: "Password field detected. SweepScout does not fill account credentials.",
+    password: "Password field detected. Play Pack Pilot does not fill account credentials.",
     unknown: "Sensitive field detected. Review manually before entering data.",
   };
   return labels[kind];
@@ -614,7 +614,7 @@ function ssRuntime<T>(type: string, payload: Record<string, unknown> = {}) {
       }
       const response = rawResponse as SsRuntimeResponse<T> | undefined;
       if (!response) {
-        reject(new Error("No response from SweepScout extension background worker."));
+        reject(new Error("No response from Play Pack Pilot extension background worker."));
         return;
       }
       if (!response.ok) {
@@ -662,7 +662,7 @@ function ssTitleCase(value: string) {
 }
 
 function ssErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "SweepScout action failed.";
+  return error instanceof Error ? error.message : "Play Pack Pilot action failed.";
 }
 
 const SS_STATE_NAMES: Record<string, string> = {

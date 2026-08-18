@@ -15,17 +15,17 @@ export default function ReportsPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Compliance Reports" kicker="Official rules, risk notes, and entry decisions">
+      <PageHeader title="Research Reports" kicker="Official rules, review notes, and entry decisions">
         <a
           href={apiUrl("/reports/compliance.csv")}
-          className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-[#07100d]"
+          className="inline-flex min-h-10 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-background-deep"
         >
           <Download size={16} aria-hidden="true" /> Export All CSV
         </a>
       </PageHeader>
 
-      {isLoading ? <LoadingState title="Loading compliance reports" /> : null}
-      {isError ? <ErrorNotice title="Unable to load compliance reports" body="The API request failed. Confirm the API server is running." /> : null}
+      {isLoading ? <LoadingState title="Loading research reports" /> : null}
+      {isError ? <ErrorNotice title="Unable to load research reports" body="The API request failed. Confirm the API server is running." /> : null}
       {data ? <ReportsBody report={data} /> : null}
     </AppShell>
   );
@@ -46,12 +46,12 @@ function ReportsBody({ report }: { report: ComplianceReport }) {
       </div>
 
       <Panel className="mt-6">
-        <SectionHeader title="Per-Sweepstake Compliance Files" eyebrow="CSV and PDF exports" />
+        <SectionHeader title="Per-sweepstakes research files" eyebrow="CSV and PDF exports" />
         <div className="grid gap-3">
           {report.reports.length ? (
             report.reports.map((item) => <ComplianceReportCard key={item.sweepstakeId} report={item} />)
           ) : (
-            <EmptyState title="No reports available" body="Add or discover sweepstakes to generate compliance report exports." />
+            <EmptyState title="No reports available" body="Add or discover sweepstakes to generate research report exports." />
           )}
         </div>
       </Panel>
@@ -96,13 +96,13 @@ function ComplianceReportCard({ report }: { report: ComplianceSweepstakeReport }
         <div className="flex flex-wrap items-start gap-2 xl:justify-end">
           <a
             href={apiUrl(`/reports/compliance/${report.sweepstakeId}.csv`)}
-            className="inline-flex h-9 items-center gap-2 rounded-md border border-line bg-panel px-3 text-sm font-medium text-foreground hover:border-accent/50"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line bg-panel px-3 text-sm font-medium text-foreground hover:border-accent/50"
           >
             <Download size={15} aria-hidden="true" /> CSV
           </a>
           <a
             href={apiUrl(`/reports/compliance/${report.sweepstakeId}.pdf`)}
-            className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-[#07100d]"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-background-deep"
           >
             <FileText size={15} aria-hidden="true" /> PDF
           </a>

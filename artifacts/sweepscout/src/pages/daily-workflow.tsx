@@ -116,7 +116,7 @@ function WorkflowBody({ data }: { data: DailyWorkflowData }) {
 
 function NextOpportunityPanel({ item }: { item: DailyWorkflowData["prefillNext"] }) {
   return (
-    <Panel className="bg-[linear-gradient(135deg,rgb(34_211_238_/_0.12),rgb(16_30_50_/_0.96)_42%)]">
+    <Panel className="bg-[linear-gradient(135deg,hsl(var(--accent)/0.12),hsl(var(--panel)/0.96)_42%)]">
       <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -129,7 +129,7 @@ function NextOpportunityPanel({ item }: { item: DailyWorkflowData["prefillNext"]
           </p>
         </div>
         {item ? (
-          <a href={item.sweepstake.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-reward px-5 text-sm font-bold text-[#111827]">
+          <a href={item.sweepstake.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background hover:bg-foreground/90">
             Visit Official Sweepstakes <ExternalLink size={16} aria-hidden="true" />
           </a>
         ) : null}

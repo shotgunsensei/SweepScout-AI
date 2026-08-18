@@ -1,6 +1,6 @@
-# SweepScout Companion Extension
+# Play Pack Pilot Companion Extension
 
-Chrome Manifest V3 companion extension for SweepScout AI.
+Chrome Manifest V3 companion extension for Play Pack Pilot.
 
 ## Build
 
@@ -22,7 +22,7 @@ The build emits an unpacked Chrome extension to `artifacts/sweepscout-extension/
 - Default API base: `http://localhost:5000/api`
 - Default dashboard URL: `http://localhost:5173/dashboard`
 - Use the popup to change either URL.
-- Click **Sync Approved Profile** after enabling profile prefill consent inside SweepScout.
+- Click **Sync Approved Profile** after enabling profile prefill consent inside Play Pack Pilot.
 
 ## Safety Boundaries
 

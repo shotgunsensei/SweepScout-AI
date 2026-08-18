@@ -39,7 +39,7 @@ export default function SweepstakesPage() {
         <Badge tone="ok"><Radar size={14} /> Live normalized data</Badge><Badge tone="warn">Verify sponsor rules</Badge>
       </PageHeader>
       <div className="grid min-w-0 gap-5">
-        <Panel className="min-w-0 overflow-hidden border-accent/25 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.18),transparent_40%),var(--panel)]">
+        <Panel className="min-w-0 overflow-hidden border-accent/25 bg-[radial-gradient(circle_at_top_right,hsl(var(--accent)/0.15),transparent_40%),hsl(var(--panel))]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
             <label className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-lg border border-line bg-navigation/75 px-4 focus-within:border-accent">
               <Search size={19} className="text-accent" /><span className="sr-only">Search opportunities</span>
@@ -80,8 +80,8 @@ export default function SweepstakesPage() {
         {radar.data ? <>
           <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-accent">Radar results</p><h2 className="mt-1 text-2xl font-bold">{radar.data.total} active opportunities</h2></div><p className="text-sm text-muted">Page {radar.data.page} · expired listings excluded</p></div>
           <div className="grid gap-4">{radar.data.items.map((item) => <OpportunityCard key={item.id} item={item} busy={action.isPending} onSave={() => action.mutate({ id: item.id, kind: "save", value: !item.saved })} onHide={() => action.mutate({ id: item.id, kind: "hide" })} />)}</div>
-          {!radar.data.items.length ? <EmptyState title="No opportunities match this flight plan" body="Widen a deadline, effort, location, or confidence filter. The radar never fills empty results with placeholder promotions." action={<Sparkles size={20} className="text-accent" />} /> : null}
-          {radar.data.total > radar.data.pageSize ? <div className="flex items-center justify-center gap-3"><button disabled={radar.data.page <= 1} onClick={() => update({ page: String(radar.data!.page - 1) }, false)} className="rounded-md border border-line px-4 py-2 text-sm disabled:opacity-40">Previous</button><button disabled={!radar.data.hasMore} onClick={() => update({ page: String(radar.data!.page + 1) }, false)} className="rounded-md bg-accent-strong px-4 py-2 text-sm font-semibold disabled:opacity-40">Next page</button></div> : null}
+          {!radar.data.items.length ? <EmptyState title="No opportunities match this flight plan" body="Widen a deadline, effort, location, or confidence filter. The radar never fills empty results with placeholder promotions." image="/brand/illustrations/play-pack-pilot-radar-empty.webp" /> : null}
+          {radar.data.total > radar.data.pageSize ? <div className="flex items-center justify-center gap-3"><button disabled={radar.data.page <= 1} onClick={() => update({ page: String(radar.data!.page - 1) }, false)} className="rounded-md border border-line px-4 py-2 text-sm disabled:opacity-40">Previous</button><button disabled={!radar.data.hasMore} onClick={() => update({ page: String(radar.data!.page + 1) }, false)} className="rounded-md bg-foreground px-4 py-2 text-sm font-semibold text-foreground-inverse hover:bg-foreground/90 disabled:opacity-40">Next page</button></div> : null}
         </> : null}
       </div>
     </AppShell>

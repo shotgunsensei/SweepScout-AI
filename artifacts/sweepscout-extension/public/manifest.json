@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "SweepScout Companion",
-  "short_name": "SweepScout",
+  "name": "Play Pack Pilot Companion",
+  "short_name": "Play Pack Pilot",
   "version": "0.1.0",
-  "description": "Detect sweepstakes pages, show eligibility/risk overlays, save to SweepScout, and prefill only approved profile fields.",
+  "description": "Detect sweepstakes pages, show eligibility/risk overlays, save to Play Pack Pilot, and prefill only approved profile fields.",
   "action": {
-    "default_title": "SweepScout",
+    "default_title": "Play Pack Pilot",
     "default_popup": "popup/popup.html"
   },
   "background": {

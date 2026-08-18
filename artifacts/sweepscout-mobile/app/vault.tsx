@@ -19,7 +19,7 @@ import { apiGet, useApiMutation } from "@/lib/api";
 import type { UserProfile } from "@/lib/types";
 
 const profileVaultWarning =
-  "SweepScout only stores the profile fields shown here. Never enter Social Security numbers, banking details, payment cards, or other sensitive financial credentials; they are intentionally unsupported.";
+  "Play Pack Pilot only stores the profile fields shown here. Never enter Social Security numbers, banking details, payment cards, or other sensitive financial credentials; they are intentionally unsupported.";
 
 export default function VaultScreen() {
   const { data, isLoading, isError } = useQuery({ queryKey: ["profile"], queryFn: () => apiGet<UserProfile>("/profile") });

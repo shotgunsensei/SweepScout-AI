@@ -13,7 +13,7 @@ export default function NotFound() {
           <div>
             <h2 className="text-lg font-semibold text-foreground">This route does not exist.</h2>
             <p className="mt-2 text-sm text-muted">
-              Return to the <Link href="/dashboard" className="text-accent">Trust Dashboard</Link> to continue.
+              Return to the <Link href="/dashboard" className="text-accent">Flight Deck</Link> to continue.
             </p>
           </div>
         </div>

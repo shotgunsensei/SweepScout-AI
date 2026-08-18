@@ -190,7 +190,7 @@ function sendRuntime<T = unknown>(type: string, payload: Record<string, unknown>
       }
       const response = rawResponse as PopupResponse<T> | undefined;
       if (!response) {
-        reject(new Error("No response from SweepScout extension background worker."));
+        reject(new Error("No response from Play Pack Pilot extension background worker."));
         return;
       }
       if (!response.ok) {
@@ -207,7 +207,7 @@ function sendTab<T>(tabId: number, message: Record<string, unknown>) {
     chrome.tabs.sendMessage(tabId, message, (rawResponse) => {
       const lastError = chrome.runtime.lastError;
       if (lastError?.message) {
-        reject(new Error("SweepScout content script is not available on this page."));
+        reject(new Error("Play Pack Pilot content script is not available on this page."));
         return;
       }
       const response = rawResponse as PopupResponse<T> | undefined;

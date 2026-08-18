@@ -85,7 +85,7 @@ export function LoadingState(props: { title?: string }) {
     <Card>
       <View style={styles.row}>
         <ActivityIndicator color={colors.accent} />
-        <Text style={styles.mutedText}>{props.title ?? "Loading SweepScout workspace"}</Text>
+        <Text style={styles.mutedText}>{props.title ?? "Loading Play Pack Pilot workspace"}</Text>
       </View>
     </Card>
   );

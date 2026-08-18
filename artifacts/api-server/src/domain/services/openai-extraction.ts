@@ -13,7 +13,7 @@ const MAX_PAGE_BYTES = 900_000;
 const MAX_MODEL_TEXT_CHARS = 35_000;
 const FETCH_TIMEOUT_MS = 12_000;
 const ROBOTS_TIMEOUT_MS = 3_500;
-const USER_AGENT = "SweepScoutAI/0.1 read-only compliance research (+https://localhost)";
+const USER_AGENT = "PlayPackPilot/0.1 read-only compliance research (+https://localhost)";
 
 type OpenAIResponse = {
   output_text?: string;
