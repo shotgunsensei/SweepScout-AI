@@ -119,3 +119,34 @@ test("discovery remains information-only: no form submission or auto-entry", () 
   assert.ok(!/submitForm|autoEnter|page\.click/.test(connectorProviders + discovery + scheduler));
   assert.match(providers, /SearchProvider/);
 });
+
+test("auto-extraction delegates to runAutoExtract, not bare runRulesExtraction", () => {
+  // Discovery must delegate to runAutoExtract so plan entitlement checks and
+  // credit debits are enforced for background runs (not just user-triggered ones).
+  assert.match(discovery, /runAutoExtract/);
+  // Must NOT call withPilotCredits directly — that is runAutoExtract's job.
+  assert.ok(!/withPilotCredits/.test(discovery), "discovery.ts must not call withPilotCredits directly");
+});
+
+test("auto-extraction resolves userId from the active membership, not a hardcoded constant", () => {
+  // Using the membership owner ensures the correct plan and credit ledger are
+  // consulted in both SQLite (single-user) and Supabase (multi-user) deployments.
+  assert.match(discovery, /getActiveMembership/);
+  assert.match(discovery, /membership\.userId/);
+  assert.ok(!/DEFAULT_USER_ID/.test(discovery), "discovery.ts must not pass DEFAULT_USER_ID to withPilotCredits");
+});
+
+test("auto-extraction is capped by autoExtractCap from app config and skipped when OpenAI is absent", () => {
+  // The cap prevents runaway AI cost; the openaiConfigured guard prevents
+  // queuing extraction jobs that would immediately fail.
+  assert.match(discovery, /autoExtractCap/);
+  assert.match(discovery, /openaiConfigured/);
+  assert.match(discovery, /saved\.slice\(0, cap\)/);
+});
+
+test("SQLite deployments use LocalBillingRepository so Supabase is not required for auto-extraction", () => {
+  // When mode is sqlite, BillingRepository cannot connect to Supabase.
+  // Discovery must pass a local no-op repo so the cap (not credits) governs cost.
+  assert.match(discovery, /LocalBillingRepository/);
+  assert.match(discovery, /mode.*sqlite|sqlite.*mode/);
+});

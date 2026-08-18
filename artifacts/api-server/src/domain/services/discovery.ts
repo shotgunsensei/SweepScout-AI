@@ -2,12 +2,15 @@ import { randomUUID } from "node:crypto";
 import { writeAuditLog } from "@/lib/audit";
 import { getSearchProvider, type SearchProvider, type SearchResult } from "@/lib/discovery/providers";
 import { getRegistrableDomain, isBlockedDomain, normalizeDiscoveryUrl } from "@/lib/discovery/url";
+import { runAutoExtract, LocalBillingRepository } from "@/lib/auto-extraction";
+import { getAppConfig } from "@/lib/env";
 import { classifySweepstakeCategory } from "@/lib/services/category-classifier";
 import {
   assessLocationEligibility,
   buildLocalDiscoveryQueries,
   type LocationEligibilityAssessment,
 } from "@/lib/services/location-eligibility";
+import { runRulesExtraction } from "@/lib/services/openai-extraction";
 import {
   applyReputationToSweepstake,
   findSponsorReputationForCandidate,
@@ -203,7 +206,8 @@ export async function runDiscoveryJob(jobId: string, input: DiscoveryRunInput = 
       },
     });
 
-    return { job: completed, sweepstakes: saved, logs };
+    const extractionResults = await autoExtractRules(saved, logs);
+    return { job: completed, sweepstakes: saved, logs, extractionResults };
   } catch (error) {
     logDiscovery(logs, "error", "Discovery run failed.", {
       error: error instanceof Error ? error.message : "Unknown discovery error.",
@@ -506,4 +510,65 @@ function summarizeLogs(logs: DiscoveryLog[], saved: number) {
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function autoExtractRules(saved: Sweepstake[], logs: DiscoveryLog[]) {
+  const config = getAppConfig();
+  if (!config.openaiConfigured) {
+    logDiscovery(logs, "info", "Auto-extraction skipped: OpenAI is not configured.", {
+      cap: config.autoExtractCap,
+    });
+    return [];
+  }
+  if (saved.length === 0) {
+    return [];
+  }
+
+  const cap = config.autoExtractCap;
+  const targets = saved.slice(0, cap);
+  logDiscovery(logs, "info", "Auto-extraction starting for newly discovered candidates.", {
+    queued: targets.length,
+    cap,
+    total: saved.length,
+  });
+
+  const store = await getStore();
+  const membership = await store.getActiveMembership();
+  const userId = membership.userId;
+  // In SQLite mode Supabase is unavailable, so the Supabase-backed
+  // BillingRepository cannot be constructed.  Use the local no-op shim;
+  // the env-var cap is the sole cost control for that deployment.
+  const billingRepository = config.mode === "sqlite" ? new LocalBillingRepository() : undefined;
+
+  const results = await runAutoExtract(
+    targets.map((s) => ({ sweepstakeId: s.id, title: s.title })),
+    userId,
+    { runExtraction: runRulesExtraction, billingRepository },
+  );
+
+  for (const result of results) {
+    const sweepstake = targets.find((s) => s.id === result.sweepstakeId);
+    if (result.ok) {
+      logDiscovery(logs, "info", "Auto-extraction completed.", {
+        sweepstakeId: result.sweepstakeId,
+        title: sweepstake?.title,
+      });
+    } else {
+      logDiscovery(logs, result.skipped ? "info" : "warn", "Auto-extraction skipped or failed for candidate.", {
+        sweepstakeId: result.sweepstakeId,
+        title: sweepstake?.title,
+        error: result.error,
+        skipped: result.skipped,
+      });
+    }
+  }
+
+  const succeeded = results.filter((r) => r.ok).length;
+  logDiscovery(logs, "info", "Auto-extraction finished.", {
+    succeeded,
+    failed: results.filter((r) => !r.ok && !r.skipped).length,
+    skipped: results.filter((r) => r.skipped).length,
+    total: results.length,
+  });
+  return results;
 }

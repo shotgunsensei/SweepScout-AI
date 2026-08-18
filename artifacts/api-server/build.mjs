@@ -24,6 +24,7 @@ async function buildAll() {
       billing: path.resolve(artifactDir, "src/domain/billing/index.ts"),
       alerts: path.resolve(artifactDir, "src/domain/alerts/index.ts"),
       operations: path.resolve(artifactDir, "src/domain/operations/index.ts"),
+      "auto-extraction": path.resolve(artifactDir, "src/domain/auto-extraction/index.ts"),
     },
     platform: "node",
     bundle: true,

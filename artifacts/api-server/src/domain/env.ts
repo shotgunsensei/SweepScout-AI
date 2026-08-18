@@ -11,6 +11,7 @@ export type AppConfig = {
   browserHeadless: boolean;
   sqlitePath: string;
   openaiModel: string;
+  autoExtractCap: number;
   warnings: string[];
 };
 
@@ -21,6 +22,12 @@ export type OpenAIAccess = {
 
 function present(value: string | undefined) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function parsePositiveInt(value: string | undefined, defaultValue: number): number {
+  if (!value) return defaultValue;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
 }
 
 function replitOpenAIConfigured() {
@@ -85,6 +92,7 @@ export function getAppConfig(): AppConfig {
     browserHeadless: process.env.BROWSER_HEADLESS !== "false",
     sqlitePath: process.env.LOCAL_SQLITE_PATH ?? ".data/sweepscout.sqlite",
     openaiModel: process.env.OPENAI_MODEL ?? "gpt-5-mini",
+    autoExtractCap: parsePositiveInt(process.env.SWEEPSCOUT_AUTO_EXTRACT_CAP, 5),
     warnings,
   };
 }
