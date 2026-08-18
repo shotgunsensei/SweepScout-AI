@@ -137,20 +137,31 @@ function extractEntryUrl(description: string): string | null {
 const GIVEAWAY_TERMS = ["giveaway", "sweepstake", "win", "contest", "free entry", "no purchase"];
 
 // The YouTube Data API allows roughly 100 search.list calls per day. Guard the
-// shared quota with a process-wide daily budget covering manual and scheduled runs.
-const youtubeQuota = { day: "", used: 0 };
+// shared quota with a daily budget persisted in the store so restarts don't reset the counter.
+//
+// A module-level mutex serializes concurrent calls so two parallel searches cannot
+// both read the same counter, both increment it, and one silently overwrite the other.
+let _quotaLock: Promise<void> = Promise.resolve();
 
-function consumeYouTubeSearchBudget() {
-  const today = new Date().toISOString().slice(0, 10);
-  if (youtubeQuota.day !== today) {
-    youtubeQuota.day = today;
-    youtubeQuota.used = 0;
+async function consumeYouTubeSearchBudget() {
+  // Chain onto the existing lock so same-process requests queue up rather than racing.
+  // The store's reserveYouTubeQuota provides additional database-level atomicity.
+  let release!: () => void;
+  const prev = _quotaLock;
+  _quotaLock = new Promise<void>((resolve) => { release = resolve; });
+  await prev;
+  try {
+    const { getStore } = await import("@/lib/storage/store");
+    const store = await getStore();
+    const today = new Date().toISOString().slice(0, 10);
+    const limit = boundedYouTubeDailyLimit();
+    const { reserved } = await store.reserveYouTubeQuota(today, limit);
+    if (!reserved) {
+      throw new Error(`Daily YouTube search budget (${limit}) is exhausted. Try again tomorrow or raise YOUTUBE_SEARCH_DAILY_LIMIT.`);
+    }
+  } finally {
+    release();
   }
-  const limit = boundedYouTubeDailyLimit();
-  if (youtubeQuota.used >= limit) {
-    throw new Error(`Daily YouTube search budget (${limit}) is exhausted. Try again tomorrow or raise YOUTUBE_SEARCH_DAILY_LIMIT.`);
-  }
-  youtubeQuota.used += 1;
 }
 
 function boundedYouTubeDailyLimit() {
@@ -163,7 +174,7 @@ export class YouTubeSearchProvider implements SearchProvider {
   name = "youtube";
 
   async search(input: SearchProviderInput): Promise<SearchResult[]> {
-    consumeYouTubeSearchBudget();
+    await consumeYouTubeSearchBudget();
     const publishedAfter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const params = new URLSearchParams({
       part: "snippet",

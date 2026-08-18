@@ -617,7 +617,18 @@ router.post("/discovery/run", handler(async (req, res) => {
     await assertCanCreateDiscoveryJob();
   }
   const provider = req.body?.provider === "youtube" ? "youtube" : req.body?.provider === "brave" ? "brave" : undefined;
-  if (provider === "youtube") {
+
+  // For jobId reruns, the stored job's provider is always authoritative — we never
+  // trust the request body's provider field, since a caller could supply "brave" to
+  // bypass YouTube quota checks while the job itself still runs the YouTube provider.
+  let effectiveProvider: string | undefined = provider;
+  if (jobId) {
+    const store = await getStore();
+    const existingJob = await store.getDiscoveryJob(jobId);
+    effectiveProvider = existingJob?.provider ?? undefined;
+  }
+
+  if (effectiveProvider === "youtube") {
     const youtubeRate = checkRateLimit("discovery:youtube:global", 2, 10 * 60_000);
     if (!youtubeRate.allowed) {
       fail(res, "YouTube scans are limited to protect the shared API quota. Try again in a few minutes.", 429);

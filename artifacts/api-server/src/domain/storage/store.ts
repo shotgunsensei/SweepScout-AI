@@ -54,6 +54,13 @@ export type SweepScoutStore = {
   saveUserProfile(profile: UserProfile): Promise<UserProfile>;
   getSettings(): Promise<AppSettings>;
   saveSettings(settings: AppSettings): Promise<AppSettings>;
+  /**
+   * Atomically reserve one YouTube search.list call against the daily budget.
+   * Returns `{ reserved: true }` when a slot was successfully claimed, or
+   * `{ reserved: false }` when the daily limit has been reached.
+   * Throws if the underlying store cannot be read or written.
+   */
+  reserveYouTubeQuota(today: string, limit: number): Promise<{ reserved: boolean; newCount: number }>;
   listBlockedDomains(): Promise<BlockedDomain[]>;
   saveBlockedDomain(domain: BlockedDomain): Promise<BlockedDomain>;
   listAuditLogs(limit?: number): Promise<AuditLog[]>;

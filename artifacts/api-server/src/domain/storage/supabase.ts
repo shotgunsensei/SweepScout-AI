@@ -56,6 +56,16 @@ function getServiceClient() {
   return serviceClient;
 }
 
+// Synthetic UUID for the YouTube daily quota row stored in audit_logs.
+// Encodes the full YYYY-MM-DD date (8 decimal digits, all valid hex) so each
+// calendar day gets its own row; yesterday's row is never mutated on day rollover.
+// The "all f's" suffix keeps these rows outside the real UUID v4 space.
+function youtubeQuotaRowId(today: string) {
+  // "2026-08-18" → "20260818" (8 chars, valid hex digits 0-9)
+  const datePart = today.replace(/-/g, "").slice(0, 8).padEnd(8, "0");
+  return `${datePart}-0000-0000-0000-ffffffffffff`;
+}
+
 class SupabaseStore implements SweepScoutStore {
   mode = "supabase" as const;
 
@@ -411,6 +421,58 @@ class SupabaseStore implements SweepScoutStore {
 
   async saveSettings(settings: AppSettings) {
     return settings;
+  }
+
+  async reserveYouTubeQuota(today: string, limit: number): Promise<{ reserved: boolean; newCount: number }> {
+    const rowId = youtubeQuotaRowId(today);
+    // Ensure a quota row exists for today without overwriting an existing one.
+    await this.supabase.from("audit_logs").upsert(
+      {
+        id: rowId,
+        action: "__youtube_quota__",
+        actor_id: null,
+        entity_type: "__quota__",
+        entity_id: today,
+        severity: "info",
+        message: `YouTube daily quota counter for ${today}`,
+        metadata: { day: today, used: 0 } as Json,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    );
+    // Retry loop for optimistic locking: read → check → conditional update.
+    // If another process increments concurrently the update matches 0 rows and we retry.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data: readData, error: readErr } = await this.supabase
+        .from("audit_logs")
+        .select("metadata")
+        .eq("id", rowId)
+        .single();
+      if (readErr) throw new Error(`Failed to read YouTube quota from Supabase: ${readErr.message}`);
+
+      const state = (readData?.metadata ?? { day: today, used: 0 }) as { day: string; used: number };
+      const currentUsed = state.day === today ? state.used : 0;
+      if (currentUsed >= limit) return { reserved: false, newCount: currentUsed };
+
+      const newCount = currentUsed + 1;
+      // Conditional update: the WHERE clause on `metadata->>used` ensures another
+      // concurrent increment cannot silently steal this slot.
+      const { data: updData, error: writeErr } = await this.supabase
+        .from("audit_logs")
+        .update({ metadata: { day: today, used: newCount } as Json })
+        .eq("id", rowId)
+        .eq("metadata->>used" as "id", String(currentUsed))
+        .select("id");
+      if (writeErr) throw new Error(`Failed to update YouTube quota in Supabase: ${writeErr.message}`);
+
+      if (updData && updData.length > 0) {
+        // Row was matched and updated — slot is reserved.
+        return { reserved: true, newCount };
+      }
+      // Zero rows updated: another process changed `used` between our read and write.
+      // Loop and re-read the latest count before retrying.
+    }
+    throw new Error("YouTube quota reservation failed due to high concurrency after 5 attempts. Please try again.");
   }
 
   async listBlockedDomains(): Promise<BlockedDomain[]> {

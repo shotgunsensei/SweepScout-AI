@@ -678,6 +678,30 @@ class SqliteStore implements SweepScoutStore {
       .run({ payload: JSON.stringify(settings), updatedAt: new Date().toISOString() });
   }
 
+  async reserveYouTubeQuota(today: string, limit: number): Promise<{ reserved: boolean; newCount: number }> {
+    // Use a synchronous better-sqlite3 transaction so read-check-write is atomic
+    // even if multiple processes share the same SQLite file via WAL mode.
+    type QuotaPayload = { day: string; used: number };
+    type QuotaRow = { payload: string };
+    return Promise.resolve(
+      this.db.transaction((): { reserved: boolean; newCount: number } => {
+        const now = new Date().toISOString();
+        const row = this.db.prepare("select payload from app_settings where key = 'youtube-quota'").get() as QuotaRow | undefined;
+        const state: QuotaPayload = row ? (JSON.parse(row.payload) as QuotaPayload) : { day: "", used: 0 };
+        const currentUsed = state.day === today ? state.used : 0;
+        if (currentUsed >= limit) return { reserved: false, newCount: currentUsed };
+        const newCount = currentUsed + 1;
+        this.db
+          .prepare(
+            `insert into app_settings (key, payload, updated_at) values ('youtube-quota', @payload, @updatedAt)
+             on conflict(key) do update set payload = excluded.payload, updated_at = excluded.updated_at`,
+          )
+          .run({ payload: JSON.stringify({ day: today, used: newCount }), updatedAt: now });
+        return { reserved: true, newCount };
+      })(),
+    );
+  }
+
   async listBlockedDomains() {
     return (this.db.prepare("select payload from blocked_domains order by created_at desc").all() as Row[])
       .map((row) => normalizeBlockedDomainPayload(fromPayload<BlockedDomain>(row)))
