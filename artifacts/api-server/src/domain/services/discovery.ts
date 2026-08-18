@@ -49,6 +49,8 @@ type DiscoveryCandidate = {
   provider: string;
   sourceType: "brand" | "creator";
   creator: Sweepstake["creator"];
+  /** Extracted external entry link from a creator video description (Gleam, KingSumo, etc.). */
+  entryUrl: string | null;
 };
 
 type DiscoveryLog = {
@@ -291,7 +293,39 @@ async function discoverCandidates(input: {
         logDiscovery(input.logs, "info", "Skipped duplicate URL.", { url: candidate.normalizedUrl });
         continue;
       }
-      candidates.set(candidate.normalizedUrl, candidate);
+
+      // Safety-check any extracted entry URL. If it fails, drop it but keep the candidate.
+      let safeEntryUrl: string | null = candidate.entryUrl;
+      if (safeEntryUrl) {
+        if (isBlockedDomain(safeEntryUrl, blockedDomains)) {
+          logDiscovery(input.logs, "warn", "Cleared extracted entry URL — blocked domain.", {
+            entryUrl: safeEntryUrl,
+            videoUrl: candidate.normalizedUrl,
+          });
+          safeEntryUrl = null;
+        } else {
+          const entryReputation = findSponsorReputationForCandidate(
+            { url: safeEntryUrl, sponsor: getRegistrableDomain(safeEntryUrl) },
+            input.reputationReport,
+          );
+          if (shouldBlockForReputation(entryReputation)) {
+            logDiscovery(input.logs, "warn", "Cleared extracted entry URL — blocked reputation.", {
+              entryUrl: safeEntryUrl,
+              videoUrl: candidate.normalizedUrl,
+              riskScore: entryReputation?.riskScore,
+            });
+            safeEntryUrl = null;
+          }
+        }
+        if (safeEntryUrl) {
+          logDiscovery(input.logs, "info", "Extracted entry URL from video description.", {
+            entryUrl: safeEntryUrl,
+            videoUrl: candidate.normalizedUrl,
+          });
+        }
+      }
+
+      candidates.set(candidate.normalizedUrl, { ...candidate, entryUrl: safeEntryUrl });
     }
   }
 
@@ -306,6 +340,20 @@ function normalizeResult(result: SearchResult, query: string, provider: string, 
       logDiscovery(logs, "warn", "Skipped non-HTTPS result.", { url: result.url });
       return null;
     }
+
+    // Validate the extracted entry URL: must be HTTPS and distinct from the video/source URL.
+    let entryUrl: string | null = null;
+    if (result.entryUrl) {
+      try {
+        const entryParsed = new URL(result.entryUrl);
+        if (entryParsed.protocol === "https:" && result.entryUrl !== result.url) {
+          entryUrl = result.entryUrl;
+        }
+      } catch {
+        // Malformed entry URL — ignore silently
+      }
+    }
+
     return {
       title: result.title.trim() || parsed.hostname,
       normalizedUrl,
@@ -315,6 +363,7 @@ function normalizeResult(result: SearchResult, query: string, provider: string, 
       provider,
       sourceType: result.sourceType ?? "brand",
       creator: result.creator ?? null,
+      entryUrl,
     };
   } catch {
     logDiscovery(logs, "warn", "Skipped invalid URL.", { url: result.url });
@@ -388,7 +437,7 @@ async function saveCandidate(
     rulesUrl: candidate.normalizedUrl.toLowerCase().includes("rules") ? candidate.normalizedUrl : null,
     rulesText: null,
     rulesExtractedAt: null,
-    formUrl: null,
+    formUrl: candidate.entryUrl ?? null,
     emailAlias: null,
     localRegion: context.location?.localRegion ?? null,
     locationEligibilityScore: context.location?.score ?? 50,

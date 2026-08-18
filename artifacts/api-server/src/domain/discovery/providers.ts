@@ -16,6 +16,8 @@ export type SearchResult = {
   source: string;
   sourceType?: SweepstakeSourceType;
   creator?: CreatorAttribution | null;
+  /** External entry link extracted from a creator video description (e.g. Gleam, KingSumo). */
+  entryUrl?: string | null;
 };
 
 export type SearchProviderInput = {
