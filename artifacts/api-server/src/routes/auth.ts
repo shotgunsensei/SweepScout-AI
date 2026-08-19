@@ -166,7 +166,12 @@ router.post("/forgot-password", handler(async (req, res) => {
 }));
 
 router.post("/reset-password", requireCsrf, handler(async (req, res) => {
-  const password = passwordSchema.parse(req.body?.password);
+  const parsedPassword = passwordSchema.safeParse(req.body?.password);
+  if (!parsedPassword.success) {
+    res.status(400).json({ ok: false, error: "Password must be between 12 and 128 characters." });
+    return;
+  }
+  const password = parsedPassword.data;
   const auth = await resolveAuthContext(req, res);
   if (auth.mode !== "supabase") throw new Error("Password reset is only available with Supabase Auth.");
   const accessToken = typeof req.cookies?.[ACCESS_COOKIE] === "string" ? req.cookies[ACCESS_COOKIE] : "";

@@ -160,6 +160,11 @@ export function ResetPasswordPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError("");
+    setStatus("");
+    if (password.length < 12) {
+      setError("Password must be at least 12 characters.");
+      return;
+    }
     try {
       await apiSend("/auth/reset-password", "POST", { password });
       setStatus("Password updated. You can now return to your flight deck.");
@@ -167,7 +172,7 @@ export function ResetPasswordPage() {
       setError(caught instanceof ApiError ? caught.message : "Unable to reset the password.");
     }
   }
-  return <AuthFrame><div className="rounded-2xl border border-line bg-panel p-7 shadow-[var(--shadow-soft)]"><h1 className="font-display text-2xl font-bold">Choose a new password</h1>{error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}{ready ? <form className="mt-5 grid gap-4" onSubmit={submit}><Field label="New password" type="password" value={password} onChange={setPassword} autoComplete="new-password" minLength={12} /><button className="min-h-11 rounded-lg bg-foreground font-semibold text-foreground-inverse hover:bg-foreground/90">Update password</button></form> : null}{status ? <p className="mt-4 text-sm text-success">{status} <Link href="/login" className="underline">Sign in</Link></p> : null}</div></AuthFrame>;
+  return <AuthFrame><div className="rounded-2xl border border-line bg-panel p-7 shadow-[var(--shadow-soft)]"><h1 className="font-display text-2xl font-bold">Choose a new password</h1>{error ? <p className="mt-4 text-sm text-danger" role="alert">{error}</p> : null}{ready ? <form className="mt-5 grid gap-4" onSubmit={submit}><Field label="New password" type="password" value={password} onChange={setPassword} autoComplete="new-password" minLength={12} /><p className="-mt-2 text-xs text-muted">Use 12–128 characters.</p><button className="min-h-11 rounded-lg bg-foreground font-semibold text-foreground-inverse hover:bg-foreground/90">Update password</button></form> : null}{status ? <p className="mt-4 text-sm text-success" role="status">{status} <Link href="/login" className="underline">Sign in</Link></p> : null}</div></AuthFrame>;
 }
 
 function AuthFrame({ children }: { children: React.ReactNode }) {

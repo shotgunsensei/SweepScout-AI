@@ -73,3 +73,9 @@ test("recovery fragments are preserved and routed to the password form without b
   assert.match(recoveryPage, /type && type !== "recovery"/);
   assert.match(recoveryPage, /window\.history\.replaceState/);
 });
+
+test("password reset validation explains the required password length", () => {
+  assert.match(routes, /Password must be between 12 and 128 characters/);
+  assert.match(recoveryPage, /Password must be at least 12 characters/);
+  assert.match(recoveryPage, /Use 12–128 characters/);
+});
