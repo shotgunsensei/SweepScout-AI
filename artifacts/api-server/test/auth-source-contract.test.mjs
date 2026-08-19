@@ -79,3 +79,10 @@ test("password reset validation explains the required password length", () => {
   assert.match(recoveryPage, /Password must be at least 12 characters/);
   assert.match(recoveryPage, /Use 12–128 characters/);
 });
+
+test("malformed recovery tokens return a clear expired-link response", () => {
+  assert.match(routes, /accessToken: z\.string\(\)\.min\(1\)/);
+  assert.match(routes, /refreshToken: z\.string\(\)\.min\(1\)/);
+  assert.match(routes, /parsedInput\.success/);
+  assert.match(routes, /The authentication link is invalid or expired/);
+});

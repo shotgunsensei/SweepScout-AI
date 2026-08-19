@@ -113,7 +113,15 @@ router.post("/login", handler(async (req, res) => {
 }));
 
 router.post("/exchange", handler(async (req, res) => {
-  const input = z.object({ accessToken: z.string().min(20), refreshToken: z.string().min(20) }).parse(req.body);
+  const parsedInput = z.object({
+    accessToken: z.string().min(1),
+    refreshToken: z.string().min(1),
+  }).safeParse(req.body);
+  if (!parsedInput.success) {
+    res.status(401).json({ ok: false, error: "The authentication link is invalid or expired." });
+    return;
+  }
+  const input = parsedInput.data;
   if (!enforceRateLimit(req, res, "exchange", undefined, 20)) return;
   requireCloudAuth();
   const client = getSupabasePublicClient();
