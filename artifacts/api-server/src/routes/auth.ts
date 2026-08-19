@@ -22,6 +22,7 @@ import {
   updatePersonalProfile,
 } from "@/lib/auth/profile";
 import { AppConfigError, getAppConfig } from "@/lib/env";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 const emailSchema = z.string().trim().email().max(320).transform((value) => value.toLowerCase());
@@ -168,6 +169,11 @@ router.post("/forgot-password", handler(async (req, res) => {
     redirectTo: `${appBaseUrl()}/reset-password`,
   });
   if (result.error) {
+    logger.warn({ providerError: authProviderErrorDiagnostic(result.error) }, "Supabase password recovery request failed");
+    if (isAuthProviderRateLimited(result.error)) {
+      res.status(429).json({ ok: false, error: "Too many recovery emails were requested. Please wait and try again later." });
+      return;
+    }
     throw new AuthenticationUnavailableError("Password recovery is temporarily unavailable. Please try again later.");
   }
   ok(res, { message: resetMessage });
@@ -290,6 +296,27 @@ function appBaseUrl() {
     throw new AppConfigError("APP_BASE_URL must use HTTPS in production.");
   }
   return parsed.origin;
+}
+
+function authProviderErrorDiagnostic(error: unknown) {
+  const providerError = error as { name?: unknown; status?: unknown; code?: unknown; message?: unknown };
+  return {
+    name: typeof providerError.name === "string" ? providerError.name.slice(0, 80) : "UnknownAuthError",
+    status: typeof providerError.status === "number" ? providerError.status : undefined,
+    code: typeof providerError.code === "string" ? providerError.code.slice(0, 120) : undefined,
+    message: typeof providerError.message === "string" ? providerError.message.slice(0, 240) : "Unknown authentication provider error.",
+  };
+}
+
+function isAuthProviderRateLimited(error: unknown) {
+  const diagnostic = authProviderErrorDiagnostic(error);
+  const code = diagnostic.code?.toLowerCase() ?? "";
+  const message = diagnostic.message.toLowerCase();
+  return diagnostic.status === 429 ||
+    code.includes("rate_limit") ||
+    code.includes("rate-limit") ||
+    message.includes("rate limit") ||
+    message.includes("too many requests");
 }
 
 const verificationMessage = "If the address can be registered, a verification email will arrive shortly.";

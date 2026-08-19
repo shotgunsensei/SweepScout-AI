@@ -3,3 +3,4 @@
 - [Browser smoke tests](browser-smoke-tests.md) — Playwright must use REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE (downloaded Chromium lacks libglib); suites run against a built vite preview.
 - [Supabase privileged RPC grants](supabase-rpc-privileges.md) — revoke EXECUTE from PUBLIC, anon, and authenticated explicitly; Supabase roles may retain explicit default grants.
 - [Supabase Auth redirects](supabase-auth-redirects.md) — production recovery links require the canonical Site URL and explicit URI allowlist entries; missing app URLs must fail closed.
+- [Supabase recovery throttling](supabase-recovery-throttling.md) — reset emails can be rejected with `over_email_send_rate_limit`; treat it as 429 and wait before requesting another.
