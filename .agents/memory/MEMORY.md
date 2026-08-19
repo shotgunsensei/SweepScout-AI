@@ -1,3 +1,4 @@
 - [OpenAI via Replit AI Integrations](openai-integration.md) — api-server reaches OpenAI through the Replit proxy (Responses API + strict json_schema); seed URLs 404 before the AI call.
 - [Discovery via Replit connectors](discovery-connectors.md) — Brave/YouTube via connectors proxy; YouTube quota guard, provider kept on jobs, dual-store persistence.
 - [Browser smoke tests](browser-smoke-tests.md) — Playwright must use REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE (downloaded Chromium lacks libglib); suites run against a built vite preview.
+- [Supabase privileged RPC grants](supabase-rpc-privileges.md) — revoke EXECUTE from PUBLIC, anon, and authenticated explicitly; Supabase roles may retain explicit default grants.

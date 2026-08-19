@@ -197,8 +197,8 @@ END $$;
 -- PostgreSQL grants EXECUTE on new functions to PUBLIC by default. These
 -- SECURITY DEFINER entry points must be unreachable from browser JWT roles,
 -- even if a caller knows an active owner's UUID.
-REVOKE ALL ON FUNCTION admin_apply_user_lifecycle(uuid,uuid,text,text,text,text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION admin_set_access_plan_override(uuid,uuid,text,text,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION admin_apply_user_lifecycle(uuid,uuid,text,text,text,text) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION admin_set_access_plan_override(uuid,uuid,text,text,text) FROM PUBLIC,anon,authenticated;
 
 DO $$ BEGIN IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN
   GRANT EXECUTE ON FUNCTION admin_apply_user_lifecycle(uuid,uuid,text,text,text,text) TO service_role;
