@@ -28,6 +28,7 @@ function CredentialPage({ mode }: { mode: AuthMode }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [googleOAuthEnabled, setGoogleOAuthEnabled] = useState(false);
+  const [cloudAuthConfigured, setCloudAuthConfigured] = useState<boolean | null>(null);
   const next = safeDestination(new URLSearchParams(window.location.search).get("next"));
 
   useEffect(() => {
@@ -35,13 +36,23 @@ function CredentialPage({ mode }: { mode: AuthMode }) {
   }, [session, navigate, next]);
 
   useEffect(() => {
-    apiGet<{ googleOAuthEnabled: boolean }>("/auth/config")
-      .then((config) => setGoogleOAuthEnabled(config.googleOAuthEnabled))
-      .catch(() => setGoogleOAuthEnabled(false));
+    apiGet<{ cloudAuthConfigured: boolean; googleOAuthEnabled: boolean }>("/auth/config")
+      .then((config) => {
+        setCloudAuthConfigured(config.cloudAuthConfigured);
+        setGoogleOAuthEnabled(config.googleOAuthEnabled);
+      })
+      .catch(() => {
+        setCloudAuthConfigured(null);
+        setGoogleOAuthEnabled(false);
+      });
   }, []);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (cloudAuthConfigured === false) {
+      setError("Sign-in is temporarily unavailable because authentication is not configured for this deployment.");
+      return;
+    }
     setBusy(true);
     setError("");
     setStatus("");
@@ -85,16 +96,17 @@ function CredentialPage({ mode }: { mode: AuthMode }) {
         <h1 className="mt-5 font-display text-2xl font-bold tracking-tight text-foreground">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
         <form className="mt-6 grid gap-4" onSubmit={submit}>
-          {mode === "signup" ? <Field label="Display name" value={displayName} onChange={setDisplayName} autoComplete="name" minLength={1} /> : null}
-          <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" icon={<Mail size={16} />} />
-          {mode !== "forgot" ? <Field label="Password" type="password" value={password} onChange={setPassword} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 12 : 1} icon={<LockKeyhole size={16} />} /> : null}
-          {error ? <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{error}</p> : null}
-          {status ? <p className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success" role="status">{status}</p> : null}
-          <button disabled={busy} className="min-h-11 rounded-lg bg-foreground px-4 font-semibold text-foreground-inverse transition hover:bg-foreground/90 disabled:opacity-60">
+          {mode === "signup" ? <Field label="Display name" value={displayName} onChange={setDisplayName} autoComplete="name" minLength={1} disabled={cloudAuthConfigured === false} testId="input-display-name" /> : null}
+          <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" icon={<Mail size={16} />} disabled={cloudAuthConfigured === false} testId="input-email" />
+          {mode !== "forgot" ? <Field label="Password" type="password" value={password} onChange={setPassword} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 12 : 1} icon={<LockKeyhole size={16} />} disabled={cloudAuthConfigured === false} testId="input-password" /> : null}
+          {cloudAuthConfigured === false ? <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert" data-testid="status-auth-unavailable">Sign-in is temporarily unavailable because authentication is not configured for this deployment.</p> : null}
+          {error ? <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert" data-testid="status-auth-error">{error}</p> : null}
+          {status ? <p className="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success" role="status" data-testid="status-auth-success">{status}</p> : null}
+          <button disabled={busy || cloudAuthConfigured === false} className="min-h-11 rounded-lg bg-foreground px-4 font-semibold text-foreground-inverse transition hover:bg-foreground/90 disabled:opacity-60" data-testid="button-submit-auth">
             {busy ? "Working…" : mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Send recovery link"}
           </button>
         </form>
-        {mode === "login" && googleOAuthEnabled ? <button type="button" onClick={googleLogin} className="mt-3 min-h-11 w-full rounded-lg border border-line bg-panel-strong px-4 text-sm font-semibold text-foreground hover:border-accent/50">Continue with Google</button> : null}
+        {mode === "login" && googleOAuthEnabled ? <button type="button" onClick={googleLogin} className="mt-3 min-h-11 w-full rounded-lg border border-line bg-panel-strong px-4 text-sm font-semibold text-foreground hover:border-accent/50" data-testid="button-google-login">Continue with Google</button> : null}
         <div className="mt-6 flex flex-wrap justify-between gap-3 text-sm text-muted">
           {mode === "login" ? <><Link href="/signup" className="text-accent hover:underline">Create account</Link><Link href="/forgot-password" className="hover:text-foreground">Forgot password?</Link></> : <Link href="/login" className="text-accent hover:underline">Back to sign in</Link>}
         </div>
@@ -157,8 +169,8 @@ function AuthFrame({ children }: { children: React.ReactNode }) {
   return <main className="relative grid min-h-dvh place-items-center overflow-hidden bg-background px-4 py-10 text-foreground"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,hsl(var(--accent)/0.12),transparent_35%)]" /><div className="relative w-full max-w-md"><Link href="/" className="mb-5 flex items-center justify-center"><img src="/brand/play-pack-pilot-logo-original.png" alt="Play Pack Pilot" className="h-16 w-32 object-contain" /></Link>{children}<p className="mt-5 text-center text-xs leading-5 text-muted"><ShieldCheck size={14} className="mr-1 inline" /> Credentials are handled by Supabase Auth and never stored in Play Pack Pilot tables.</p></div></main>;
 }
 
-function Field({ label, value, onChange, type = "text", autoComplete, minLength, icon }: { label: string; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; minLength?: number; icon?: React.ReactNode }) {
-  return <label className="grid gap-1.5 text-sm font-medium text-foreground"><span>{label}</span><span className="flex items-center gap-2 rounded-lg border border-line bg-panel-strong px-3 focus-within:border-accent">{icon}<input required type={type} value={value} minLength={minLength} autoComplete={autoComplete} onChange={(event) => onChange(event.currentTarget.value)} className="h-11 min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted" /></span></label>;
+function Field({ label, value, onChange, type = "text", autoComplete, minLength, icon, disabled = false, testId }: { label: string; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; minLength?: number; icon?: React.ReactNode; disabled?: boolean; testId?: string }) {
+  return <label className="grid gap-1.5 text-sm font-medium text-foreground"><span>{label}</span><span className="flex items-center gap-2 rounded-lg border border-line bg-panel-strong px-3 focus-within:border-accent">{icon}<input required disabled={disabled} type={type} value={value} minLength={minLength} autoComplete={autoComplete} onChange={(event) => onChange(event.currentTarget.value)} className="h-11 min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60" data-testid={testId} /></span></label>;
 }
 
 function AuthStatus({ title, message, error }: { title: string; message: string; error: boolean }) {

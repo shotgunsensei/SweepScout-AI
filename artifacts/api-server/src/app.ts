@@ -2,11 +2,12 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
+import { ZodError } from "zod";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { AdminAccessError } from "@/lib/admin";
 import { AppConfigError } from "@/lib/env";
-import { AuthenticationError, AuthenticationUnavailableError } from "@/lib/auth/session";
+import { AccountDataUnavailableError, AuthenticationError, AuthenticationUnavailableError } from "@/lib/auth/session";
 import { InsufficientCreditsError } from "@/lib/billing";
 import { OperationsRepository } from "@/lib/operations";
 
@@ -80,9 +81,11 @@ app.use("/api", router);
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
   const message = err instanceof Error ? err.message : "Unexpected server error.";
-  let status = process.env.NODE_ENV === "production" ? 500 : 400;
-  if (err instanceof AdminAccessError) status = 403;
+  let status = 500;
+  if (err instanceof ZodError) status = 400;
+  else if (err instanceof AdminAccessError) status = 403;
   else if (err instanceof AuthenticationUnavailableError) status = 503;
+  else if (err instanceof AccountDataUnavailableError) status = 503;
   else if (err instanceof AuthenticationError) status = 401;
   else if (err instanceof AppConfigError) status = 422;
   else if (err instanceof InsufficientCreditsError) status = 402;
@@ -92,8 +95,7 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     route: req.path,
     method: req.method,
   };
-  if (process.env.NODE_ENV === "production") logger.error(diagnostic, "request failed");
-  else logger.error({ ...diagnostic, err }, "request failed");
+  logger.error({ ...diagnostic, err }, "request failed");
   if (status >= 500 && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     void new OperationsRepository().recordError({
       correlationId: String((req as Request & { id?: string }).id ?? "unknown"),
@@ -106,12 +108,14 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
   const userSafe =
     err instanceof AdminAccessError ||
     err instanceof AuthenticationUnavailableError ||
+    err instanceof AccountDataUnavailableError ||
     err instanceof AuthenticationError ||
     err instanceof AppConfigError ||
     err instanceof InsufficientCreditsError;
   res.status(status).json({
     ok: false,
-    error: status >= 500 && !userSafe ? "Unexpected server error." : message,
+    error: err instanceof ZodError ? "The request contains invalid or missing fields." : status >= 500 && !userSafe ? "Unexpected server error." : message,
+    ...(status >= 500 ? { reference: diagnostic.correlationId } : {}),
   });
 });
 

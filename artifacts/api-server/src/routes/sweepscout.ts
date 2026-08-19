@@ -59,7 +59,7 @@ import { requireRequestAuth } from "@/lib/auth/session";
 import { parseRadarFilters, SupabaseRadarRepository } from "@/lib/radar";
 import { PersonalizationRepository } from "@/lib/personalization";
 import { AlertsRepository, alertsSummary, createCustomScanner, runCustomScanner, saveAlertPreferences, updateCustomScanner } from "@/lib/alerts";
-import { OperationsRepository, actor as adminActor, adminReason, adjustCredits as adminAdjustCredits, correctListing, decideListing, mergeListings, undoMerge } from "@/lib/operations";
+import { OperationsRepository, UserLifecycleService, actor as adminActor, adminReason, adjustCredits as adminAdjustCredits, correctListing, decideListing, mergeListings, undoMerge } from "@/lib/operations";
 
 const router: IRouter = Router();
 
@@ -218,12 +218,45 @@ router.post("/admin/users/:id/credits", handler(async (req, res) => {
   ok(res, await adminAdjustCredits(adminActor(await requireAdmin(req), req), String(req.params.id), req.body ?? {}));
 }));
 
+// ---------------------------------------------------------------------------
+// Owner-scoped user lifecycle. Passwords are never accepted or stored; new
+// accounts are created through Supabase's secure invitation flow. Every
+// mutation is safeguarded and written to the immutable admin audit log.
+// ---------------------------------------------------------------------------
+
+router.post("/admin/users", handler(async (req, res) => {
+  const owner = adminActor(await requireOwner(req), req);
+  ok(res, await new UserLifecycleService().invite(owner, req.body ?? {}), 201);
+}));
+
+router.patch("/admin/users/:id/role", handler(async (req, res) => {
+  const owner = adminActor(await requireOwner(req), req);
+  ok(res, await new UserLifecycleService().changeRole(owner, String(req.params.id), req.body ?? {}));
+}));
+
 router.post("/admin/users/:id/disable", handler(async (req, res) => {
-  const owner = adminActor(await requireOwner(req), req), repo = new OperationsRepository(), id = String(req.params.id);
-  if (id === owner.userId) return fail(res, "The active owner account cannot disable itself.", 422);
-  const reason = adminReason(req.body?.reason), before = await repo.user(id), after = await repo.disableUser(id, req.body?.disabled !== false);
-  await repo.audit(owner, { action: req.body?.disabled === false ? "user.enabled" : "user.disabled", targetType: "profile", targetId: id, before: before.profile, after, reason });
-  ok(res, after);
+  const owner = adminActor(await requireOwner(req), req);
+  ok(res, await new UserLifecycleService().setDisabled(owner, String(req.params.id), true, req.body ?? {}));
+}));
+
+router.post("/admin/users/:id/enable", handler(async (req, res) => {
+  const owner = adminActor(await requireOwner(req), req);
+  ok(res, await new UserLifecycleService().setDisabled(owner, String(req.params.id), false, req.body ?? {}));
+}));
+
+router.delete("/admin/users/:id", handler(async (req, res) => {
+  const owner = adminActor(await requireOwner(req), req);
+  ok(res, await new UserLifecycleService().remove(owner, String(req.params.id), req.body ?? {}));
+}));
+
+router.put("/admin/users/:id/access-plan", handler(async (req, res) => {
+  const owner = adminActor(await requireOwner(req), req);
+  ok(res, await new UserLifecycleService().setAccessPlan(owner, String(req.params.id), req.body ?? {}));
+}));
+
+router.delete("/admin/users/:id/access-plan", handler(async (req, res) => {
+  const owner = adminActor(await requireOwner(req), req);
+  ok(res, await new UserLifecycleService().clearAccessPlan(owner, String(req.params.id), req.body ?? {}));
 }));
 
 router.put("/admin/support/:id", handler(async (req, res) => {

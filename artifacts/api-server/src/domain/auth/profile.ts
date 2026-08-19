@@ -1,5 +1,5 @@
 import type { AuthContext } from "@/lib/auth/session";
-import { getSupabaseServiceClient } from "@/lib/auth/session";
+import { AccountDataUnavailableError, getSupabaseServiceClient } from "@/lib/auth/session";
 
 export type PersonalProfileInput = {
   displayName?: string;
@@ -47,15 +47,28 @@ export async function ensurePersonalProfile(auth: AuthContext, displayName?: str
       display_name: name,
       updated_at: now,
     },
-    { onConflict: "id", ignoreDuplicates: true },
+    { onConflict: "id" },
   );
-  if (profileResult.error) throw new Error("Unable to create the personal profile.");
+  checkAccountData(profileResult, "Unable to create the personal profile.");
 
-  const [preferences, eligibility] = await Promise.all([
+  const [preferences, eligibility, subscription] = await Promise.all([
     client.from("user_preferences").upsert({ user_id: auth.userId, updated_at: now }, { onConflict: "user_id", ignoreDuplicates: true }),
     client.from("user_eligibility_profiles").upsert({ user_id: auth.userId, updated_at: now }, { onConflict: "user_id", ignoreDuplicates: true }),
+    client.from("subscriptions").upsert(
+      {
+        user_id: auth.userId,
+        provider_subscription_id: null,
+        provider_price_id: null,
+        plan_key: "free_flight",
+        status: "none",
+        updated_at: now,
+      },
+      { onConflict: "user_id", ignoreDuplicates: true },
+    ),
   ]);
-  if (preferences.error || eligibility.error) throw new Error("Unable to initialize profile preferences.");
+  checkAccountData(preferences, "Unable to initialize profile preferences.");
+  checkAccountData(eligibility, "Unable to initialize profile eligibility.");
+  checkAccountData(subscription, "Unable to initialize account access.");
   return getPersonalProfile(auth);
 }
 
@@ -71,8 +84,14 @@ export async function getPersonalProfile(auth: AuthContext) {
     client.from("user_preferences").select("*").eq("user_id", auth.userId).single(),
     client.from("user_eligibility_profiles").select("*").eq("user_id", auth.userId).single(),
   ]);
-  if (profile.error || preferences.error || eligibility.error) throw new Error("Unable to load the personal profile.");
+  checkAccountData(profile, "Unable to load the personal profile.");
+  checkAccountData(preferences, "Unable to load profile preferences.");
+  checkAccountData(eligibility, "Unable to load profile eligibility.");
   return sanitizeProfile(profile.data, preferences.data, eligibility.data);
+}
+
+function checkAccountData(result: { error?: unknown }, message: string) {
+  if (result.error) throw new AccountDataUnavailableError(message, result.error);
 }
 
 export async function updatePersonalProfile(auth: AuthContext, input: PersonalProfileInput) {

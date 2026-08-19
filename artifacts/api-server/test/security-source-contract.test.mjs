@@ -13,7 +13,8 @@ const [app, router, routes, profile, scanner, logger] = await Promise.all([
 
 test("API hardening installs headers, strict body types, sanitized production errors, and general throttling", () => {
   for (const term of ["X-Content-Type-Options", "X-Frame-Options", "Strict-Transport-Security", "Content-Security-Policy", "Permissions-Policy", "Request body must use application/json"]) assert.match(app, new RegExp(term));
-  assert.match(app, /process\.env\.NODE_ENV === "production"\) logger\.error\(diagnostic/);
+  assert.match(app, /logger\.error\(\{ \.\.\.diagnostic, err \}, "request failed"\)/);
+  assert.match(app, /reference: diagnostic\.correlationId/);
   assert.match(router, /API rate limit exceeded/);
   assert.match(router, /requireRequestAuth/);
 });

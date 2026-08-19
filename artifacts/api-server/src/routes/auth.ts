@@ -61,7 +61,7 @@ router.get("/session", handler(async (req, res) => {
   const auth = await resolveAuthContext(req, res);
   ensureCsrfCookie(req, res);
   const profile = await ensurePersonalProfile(auth);
-  ok(res, sessionPayload(auth, profile.onboardingCompletedAt));
+  ok(res, sessionPayload({ ...auth, platformRole: profile.platformRole }, profile.onboardingCompletedAt));
 }));
 
 router.post("/signup", handler(async (req, res) => {
@@ -109,7 +109,7 @@ router.post("/login", handler(async (req, res) => {
     platformRole: "user",
   };
   const profile = await ensurePersonalProfile(auth);
-  ok(res, sessionPayload(auth, profile.onboardingCompletedAt));
+  ok(res, sessionPayload({ ...auth, platformRole: profile.platformRole }, profile.onboardingCompletedAt));
 }));
 
 router.post("/exchange", handler(async (req, res) => {

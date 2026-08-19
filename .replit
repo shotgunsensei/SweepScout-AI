@@ -21,3 +21,9 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+APP_BASE_URL = "https://playpackpilot.com"
+PLATFORM_OWNER_EMAIL = "john@shotgunninjas.com"

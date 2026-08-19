@@ -1,13 +1,15 @@
 const API_BASE = "/api";
 
-type ApiEnvelope<T> = { ok: true; data: T } | { ok: false; error: string };
+type ApiEnvelope<T> = { ok: true; data: T } | { ok: false; error: string; reference?: string };
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  reference?: string;
+  constructor(message: string, status: number, reference?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.reference = reference;
   }
 }
 
@@ -24,8 +26,9 @@ async function parse<T>(res: Response): Promise<T> {
   }
   if (!res.ok || !payload || payload.ok === false) {
     const message = payload && payload.ok === false ? payload.error : res.statusText || "Request failed";
+    const reference = payload && payload.ok === false ? payload.reference : undefined;
     if (res.status === 401) window.dispatchEvent(new Event("play-pack-pilot-session-expired"));
-    throw new ApiError(message, res.status);
+    throw new ApiError(reference ? `${message} Reference: ${reference}` : message, res.status, reference);
   }
   return payload.data;
 }
@@ -40,7 +43,7 @@ export async function apiGet<T>(path: string): Promise<T> {
 
 export async function apiSend<T>(
   path: string,
-  method: "POST" | "PUT" | "DELETE",
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   body?: Record<string, unknown>,
 ): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

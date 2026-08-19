@@ -31,6 +31,16 @@ export class AuthenticationUnavailableError extends Error {
   }
 }
 
+export class AccountDataUnavailableError extends Error {
+  readonly cause?: unknown;
+
+  constructor(message = "Account services are temporarily unavailable. Please try again.", cause?: unknown) {
+    super(message);
+    this.name = "AccountDataUnavailableError";
+    this.cause = cause;
+  }
+}
+
 type AuthenticatedRequest = Request & { auth?: AuthContext };
 
 let serviceClient: SupabaseClient | null = null;
@@ -199,7 +209,7 @@ async function loadProfileAccess(userId: string) {
     .select("display_name, platform_role, account_disabled_at")
     .eq("id", userId)
     .maybeSingle();
-  if (result.error) throw new AuthenticationError("Unable to load account access.");
+  if (result.error) throw new AccountDataUnavailableError("Account access could not be loaded. Please try again.", result.error);
   return result.data ?? { display_name: "", platform_role: "user", account_disabled_at: null };
 }
 

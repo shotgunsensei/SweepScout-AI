@@ -77,6 +77,45 @@ test("production fails closed when Supabase authentication is not configured", a
 
   const sessionResponse = await fetch(`http://127.0.0.1:${port}/api/auth/session`);
   assert.equal(sessionResponse.status, 503);
+
+  const loginResponse = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "owner@example.com", password: "not-a-real-password" }),
+  });
+  assert.equal(loginResponse.status, 503);
+  const loginBody = await loginResponse.json();
+  assert.match(loginBody.error, /not configured/i);
+  assert.ok(loginBody.reference);
+
+  const signupResponse = await fetch(`http://127.0.0.1:${port}/api/auth/signup`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "new@example.com", password: "not-a-real-password", displayName: "New Pilot" }),
+  });
+  assert.equal(signupResponse.status, 503);
+  assert.match((await signupResponse.json()).error, /not configured/i);
+});
+
+test("malformed authentication requests return a safe client error", async (t) => {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "playpackpilot-auth-validation-"));
+  const port = 55126;
+  const server = await startServer(port, {
+    NODE_ENV: "development",
+    LOCAL_SQLITE_PATH: path.join(temporaryDirectory, "test.sqlite"),
+  });
+  t.after(async () => {
+    server.kill();
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  });
+
+  const response = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: "not-an-email", password: "" }),
+  });
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /invalid or missing fields/i);
 });
 
 test("explicit local owner mode authorizes platform administration", async (t) => {

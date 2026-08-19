@@ -50,6 +50,10 @@ export class LocalBillingRepository extends BillingRepository {
     };
   }
 
+  override async accessPlanOverride(_userId: string) {
+    return null;
+  }
+
   override async consume(_userId: string, _input: unknown): Promise<undefined> {
     // No Supabase — cost is governed only by the autoExtractCap env var.
     return undefined;
