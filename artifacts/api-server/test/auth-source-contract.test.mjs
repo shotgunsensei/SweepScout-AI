@@ -11,6 +11,7 @@ const clientApp = await readFile(path.resolve("../sweepscout/src/App.tsx"), "utf
 const recoveryHelper = await readFile(path.resolve("../sweepscout/src/lib/auth-recovery.ts"), "utf8");
 const recoveryPage = await readFile(path.resolve("../sweepscout/src/pages/auth.tsx"), "utf8");
 const ownerProvision = await readFile(path.resolve("src/scripts/provision-owner.ts"), "utf8");
+const app = await readFile(path.resolve("src/app.ts"), "utf8");
 
 test("authentication routes cover the required Supabase lifecycle", () => {
   for (const route of ["/config", "/signup", "/login", "/exchange", "/refresh", "/forgot-password", "/reset-password", "/oauth/google", "/logout", "/session", "/data-export", "/account-deletion"]) {
@@ -53,6 +54,12 @@ test("password recovery uses configured production redirects and never silently 
   assert.match(routes, /if \(result\.error\)/);
   assert.match(ownerProvision, /required\("APP_BASE_URL"\)/);
   assert.match(ownerProvision, /`\$\{appBaseUrl\}\/reset-password`/);
+});
+
+test("development preview origins do not break same-app recovery exchanges while production remains allowlisted", () => {
+  assert.match(app, /process\.env\.NODE_ENV !== "production"/);
+  assert.match(app, /if \(!configured\) return new Set<string>\(\)/);
+  assert.doesNotMatch(app, /APP_BASE_URL \?\? "http:\/\/localhost/);
 });
 
 test("recovery fragments are preserved and routed to the password form without being logged", () => {

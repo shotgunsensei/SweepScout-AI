@@ -49,7 +49,7 @@ app.use(
   cors({
     credentials: true,
     origin(origin, callback) {
-      if (!origin || allowedOrigins().has(origin)) return callback(null, true);
+      if (!origin || process.env.NODE_ENV !== "production" || allowedOrigins().has(origin)) return callback(null, true);
       callback(new Error("Origin is not allowed."));
     },
   }),
@@ -122,10 +122,7 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
 export default app;
 
 function allowedOrigins() {
-  return new Set(
-    (process.env.APP_BASE_URL ?? "http://localhost:5173")
-      .split(",")
-      .map((value) => value.trim().replace(/\/$/, ""))
-      .filter(Boolean),
-  );
+  const configured = process.env.APP_BASE_URL?.trim();
+  if (!configured) return new Set<string>();
+  return new Set(configured.split(",").map((value) => value.trim().replace(/\/$/, "")).filter(Boolean));
 }
