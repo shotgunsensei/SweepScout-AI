@@ -11,6 +11,12 @@ import { formatDate, titleCase } from "@/lib/format";
 import type { AdminOperations } from "@/lib/types";
 
 type Action={path:string;method?:"POST"|"PUT"|"PATCH"|"DELETE";body?:Record<string,unknown>};
+const EMPTY_METRICS:AdminOperations["metrics"]={
+  activeUsers:0,paidSubscribers:0,mrrCents:0,aiRuns:0,aiTokens:0,aiCostUsd:0,
+  pilotCreditsConsumed:0,activeSources:0,failedScans:0,listingsDiscovered:0,
+  pendingReview:0,duplicateCandidates:0,highRiskListings:0,webhookFailures:0,
+  queueFailures:0,recentApplicationErrors:0
+};
 export default function AdminPage(){
   const qc=useQueryClient(),[selected,setSelected]=useState("");
   const query=useQuery({queryKey:["admin-operations"],queryFn:()=>apiGet<AdminOperations>("/admin/operations"),retry:false});
@@ -18,7 +24,7 @@ export default function AdminPage(){
   const action=useMutation({mutationFn:(input:Action)=>apiSend(input.path,input.method??"POST",input.body),onSuccess:async()=>{await qc.invalidateQueries();toast.success("Administrative action recorded");},onError:(error)=>toast.error(error.message)});
   if(query.isLoading)return <AppShell><PageHeader title="Platform Operations" kicker="Protected administration"/><LoadingState title="Loading operational controls"/></AppShell>;
   if(query.isError||!query.data)return <AppShell><PageHeader title="Platform Operations" kicker="Protected administration"/><ErrorNotice title="Administration unavailable" body={(query.error as Error)?.message||"Owner or administrator access is required."}/></AppShell>;
-  const data=query.data,m=data.metrics;
+  const data=query.data,m={...EMPTY_METRICS,...data.metrics};
   return <AppShell>
     <PageHeader title="Platform Operations" kicker={`${data.admin.role} access · ${data.admin.label}`} description="Maintain approved sources, listing quality, billing integrity, queues, providers, and immutable operational evidence."/>
     <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5"><MetricCard label="Active users" value={m.activeUsers}/><MetricCard label="Paid subscribers" value={m.paidSubscribers}/><MetricCard label="MRR" value={`$${(m.mrrCents/100).toFixed(2)}`}/><MetricCard label="AI usage" value={`${m.aiRuns} runs`} sublabel={`${m.aiTokens.toLocaleString()} tokens · $${m.aiCostUsd.toFixed(2)}`}/><MetricCard label="Credits consumed" value={m.pilotCreditsConsumed}/><MetricCard label="Active sources" value={m.activeSources}/><MetricCard label="Failed scans" value={m.failedScans}/><MetricCard label="Listings discovered" value={m.listingsDiscovered}/><MetricCard label="Pending review" value={m.pendingReview}/><MetricCard label="Duplicate candidates" value={m.duplicateCandidates}/><MetricCard label="High risk" value={m.highRiskListings}/><MetricCard label="Webhook failures" value={m.webhookFailures}/><MetricCard label="Queue failures" value={m.queueFailures}/><MetricCard label="Application errors" value={m.recentApplicationErrors}/></div>
