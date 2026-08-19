@@ -7,6 +7,10 @@ const routes = await readFile(path.resolve("src/routes/auth.ts"), "utf8");
 const sessions = await readFile(path.resolve("src/domain/auth/session.ts"), "utf8");
 const router = await readFile(path.resolve("src/routes/index.ts"), "utf8");
 const clientAuth = await readFile(path.resolve("../sweepscout/src/lib/auth.tsx"), "utf8");
+const clientApp = await readFile(path.resolve("../sweepscout/src/App.tsx"), "utf8");
+const recoveryHelper = await readFile(path.resolve("../sweepscout/src/lib/auth-recovery.ts"), "utf8");
+const recoveryPage = await readFile(path.resolve("../sweepscout/src/pages/auth.tsx"), "utf8");
+const ownerProvision = await readFile(path.resolve("src/scripts/provision-owner.ts"), "utf8");
 
 test("authentication routes cover the required Supabase lifecycle", () => {
   for (const route of ["/config", "/signup", "/login", "/exchange", "/refresh", "/forgot-password", "/reset-password", "/oauth/google", "/logout", "/session", "/data-export", "/account-deletion"]) {
@@ -40,4 +44,25 @@ test("post-login destinations are constrained to local application paths", () =>
   assert.match(clientAuth, /value\.startsWith\("\/"\)/);
   assert.match(clientAuth, /value\.startsWith\("\/\/"\)/);
   assert.match(clientAuth, /value\.includes\("\\\\"\)/);
+});
+
+test("password recovery uses configured production redirects and never silently falls back in production", () => {
+  assert.match(routes, /redirectTo: `\$\{appBaseUrl\(\)\}\/reset-password`/);
+  assert.match(routes, /APP_BASE_URL must be configured for production authentication redirects/);
+  assert.match(routes, /APP_BASE_URL must use HTTPS in production/);
+  assert.match(routes, /if \(result\.error\)/);
+  assert.match(ownerProvision, /required\("APP_BASE_URL"\)/);
+  assert.match(ownerProvision, /`\$\{appBaseUrl\}\/reset-password`/);
+});
+
+test("recovery fragments are preserved and routed to the password form without being logged", () => {
+  assert.match(clientApp, /recoveryRedirectTarget\(window\.location, import\.meta\.env\.BASE_URL\)/);
+  assert.match(recoveryHelper, /fragment\.type !== "recovery"/);
+  assert.match(recoveryHelper, /fragment\.accessToken/);
+  assert.match(recoveryHelper, /fragment\.refreshToken/);
+  assert.match(recoveryHelper, /\/reset-password/);
+  assert.doesNotMatch(recoveryHelper, /console\./);
+  assert.match(recoveryPage, /readAuthFragment\(window\.location\.hash\)/);
+  assert.match(recoveryPage, /type && type !== "recovery"/);
+  assert.match(recoveryPage, /window\.history\.replaceState/);
 });

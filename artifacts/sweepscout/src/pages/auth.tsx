@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { CheckCircle2, LockKeyhole, Mail, Plane, ShieldCheck } from "lucide-react";
 import { apiGet, apiSend, ApiError } from "@/lib/api";
 import { safeDestination, useAuth } from "@/lib/auth";
+import { readAuthFragment } from "@/lib/auth-recovery";
 
 type AuthMode = "login" | "signup" | "forgot";
 
@@ -142,15 +143,19 @@ export function ResetPasswordPage() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
-    const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
+    const { accessToken, refreshToken, type } = readAuthFragment(window.location.hash);
     if (!accessToken || !refreshToken) {
       setError("The recovery link is incomplete or expired.");
       return;
     }
+    if (type && type !== "recovery") {
+      setError("This link is not a password recovery link.");
+      return;
+    }
     window.history.replaceState(null, "", window.location.pathname);
-    apiSend("/auth/exchange", "POST", { accessToken, refreshToken }).then(() => setReady(true)).catch((caught) => setError(caught instanceof ApiError ? caught.message : "Unable to verify the recovery link."));
+    apiSend("/auth/exchange", "POST", { accessToken, refreshToken })
+      .then(() => setReady(true))
+      .catch((caught) => setError(caught instanceof ApiError ? caught.message : "Unable to verify the recovery link."));
   }, []);
   async function submit(event: FormEvent) {
     event.preventDefault();

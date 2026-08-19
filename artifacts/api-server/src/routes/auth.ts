@@ -21,7 +21,7 @@ import {
   requestAccountDeletion,
   updatePersonalProfile,
 } from "@/lib/auth/profile";
-import { getAppConfig } from "@/lib/env";
+import { AppConfigError, getAppConfig } from "@/lib/env";
 
 const router: IRouter = Router();
 const emailSchema = z.string().trim().email().max(320).transform((value) => value.toLowerCase());
@@ -156,7 +156,12 @@ router.post("/forgot-password", handler(async (req, res) => {
   const email = emailSchema.parse(req.body?.email);
   if (!enforceRateLimit(req, res, "forgot", email, 5)) return;
   requireCloudAuth();
-  await getSupabasePublicClient().auth.resetPasswordForEmail(email, { redirectTo: `${appBaseUrl()}/reset-password` });
+  const result = await getSupabasePublicClient().auth.resetPasswordForEmail(email, {
+    redirectTo: `${appBaseUrl()}/reset-password`,
+  });
+  if (result.error) {
+    throw new AuthenticationUnavailableError("Password recovery is temporarily unavailable. Please try again later.");
+  }
   ok(res, { message: resetMessage });
 }));
 
@@ -252,7 +257,26 @@ function requireCloudAuth() {
 }
 
 function appBaseUrl() {
-  return (process.env.APP_BASE_URL ?? "http://localhost:5173").replace(/\/$/, "");
+  const configured = process.env.APP_BASE_URL?.split(",")[0]?.trim();
+  if (!configured) {
+    if (process.env.NODE_ENV === "production") {
+      throw new AppConfigError("APP_BASE_URL must be configured for production authentication redirects.");
+    }
+    return "http://localhost:5173";
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(configured);
+  } catch {
+    throw new AppConfigError("APP_BASE_URL must be a valid absolute URL.");
+  }
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new AppConfigError("APP_BASE_URL must use HTTP or HTTPS.");
+  }
+  if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
+    throw new AppConfigError("APP_BASE_URL must use HTTPS in production.");
+  }
+  return parsed.origin;
 }
 
 const verificationMessage = "If the address can be registered, a verification email will arrive shortly.";

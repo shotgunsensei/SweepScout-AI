@@ -25,6 +25,7 @@ import OnboardingPage from "@/pages/onboarding";
 import { AuthCallbackPage, ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage } from "@/pages/auth";
 import { PolicyIndexPage, PolicyPage } from "@/pages/policies";
 import { AuthProvider, ProtectedRoute } from "@/lib/auth";
+import { recoveryRedirectTarget } from "@/lib/auth-recovery";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -96,6 +97,8 @@ function Router() {
 }
 
 function App() {
+  const recoveryTarget = recoveryRedirectTarget(window.location, import.meta.env.BASE_URL);
+  if (recoveryTarget) window.history.replaceState(null, "", recoveryTarget);
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
