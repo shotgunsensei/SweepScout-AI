@@ -60,6 +60,7 @@ import { parseRadarFilters, SupabaseRadarRepository } from "@/lib/radar";
 import { PersonalizationRepository } from "@/lib/personalization";
 import { AlertsRepository, alertsSummary, createCustomScanner, runCustomScanner, saveAlertPreferences, updateCustomScanner } from "@/lib/alerts";
 import { OperationsRepository, UserLifecycleService, actor as adminActor, adminReason, adjustCredits as adminAdjustCredits, correctListing, decideListing, mergeListings, undoMerge } from "@/lib/operations";
+import { getFlightDeckData } from "@/lib/flight-deck";
 
 const router: IRouter = Router();
 
@@ -287,9 +288,8 @@ router.get("/config", handler(async (_req, res) => {
   ok(res, getAppConfig());
 }));
 
-router.get("/dashboard", handler(async (_req, res) => {
-  const store = await getStore();
-  ok(res, await store.getDashboardData());
+router.get("/dashboard", handler(async (req, res) => {
+  ok(res, await getFlightDeckData(requireRequestAuth(req)));
 }));
 
 router.get("/radar", handler(async (req, res) => {

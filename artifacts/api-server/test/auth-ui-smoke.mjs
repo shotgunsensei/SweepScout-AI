@@ -75,6 +75,8 @@ try {
     throw new Error(`Onboarding did not complete at ${page.url()}: ${renderedError ?? "no rendered error"}`);
   }
   await page.getByText("Flight Deck", { exact: true }).first().waitFor();
+  await page.getByText("Radar Matches", { exact: true }).waitFor();
+  assert.equal(await page.getByText("Unable to load dashboard", { exact: true }).count(), 0);
   assert.equal(await page.getByText("Platform Admin", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "I Understand" }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
@@ -83,9 +85,8 @@ try {
   process.stdout.write("Authentication UI smoke passed: login, protected redirect, onboarding, role-aware navigation, logout.\n");
 } finally {
   if (browser) await browser.close();
-  api.kill();
-  web.kill();
-  await rm(temporaryDirectory, { recursive: true, force: true });
+  await Promise.all([stopProcess(api), stopProcess(web)]);
+  await rm(temporaryDirectory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 }
 
 async function waitFor(url, child) {
@@ -101,4 +102,19 @@ async function waitFor(url, child) {
     await new Promise((resolve) => setTimeout(resolve, 75));
   }
   throw new Error(`Timed out waiting for ${url}.`);
+}
+
+async function stopProcess(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  await new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL");
+      resolve();
+    }, 5_000);
+    child.once("exit", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+    child.kill();
+  });
 }

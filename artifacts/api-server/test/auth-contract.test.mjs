@@ -16,8 +16,8 @@ test("local development sessions protect mutations and enforce owner authorizati
     PLAYPACKPILOT_LOCAL_ADMIN: "false",
   });
   t.after(async () => {
-    server.kill();
-    await rm(temporaryDirectory, { recursive: true, force: true });
+    await stopProcess(server);
+    await rm(temporaryDirectory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   });
 
   const sessionResponse = await fetch(`http://127.0.0.1:${port}/api/auth/session`);
@@ -66,7 +66,7 @@ test("local development sessions protect mutations and enforce owner authorizati
 test("production fails closed when Supabase authentication is not configured", async (t) => {
   const port = 55124;
   const server = await startServer(port, { NODE_ENV: "production" });
-  t.after(() => server.kill());
+  t.after(() => stopProcess(server));
 
   const health = await fetch(`http://127.0.0.1:${port}/api/healthz`);
   assert.equal(health.status, 200);
@@ -105,8 +105,8 @@ test("malformed authentication requests return a safe client error", async (t) =
     LOCAL_SQLITE_PATH: path.join(temporaryDirectory, "test.sqlite"),
   });
   t.after(async () => {
-    server.kill();
-    await rm(temporaryDirectory, { recursive: true, force: true });
+    await stopProcess(server);
+    await rm(temporaryDirectory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   });
 
   const response = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
@@ -127,8 +127,8 @@ test("explicit local owner mode authorizes platform administration", async (t) =
     PLAYPACKPILOT_LOCAL_ADMIN: "true",
   });
   t.after(async () => {
-    server.kill();
-    await rm(temporaryDirectory, { recursive: true, force: true });
+    await stopProcess(server);
+    await rm(temporaryDirectory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   });
 
   const sessionResponse = await fetch(`http://127.0.0.1:${port}/api/auth/session`);
@@ -197,4 +197,19 @@ function cookieHeader(response) {
 function cookieValue(cookies, name) {
   const match = cookies.split("; ").find((value) => value.startsWith(`${name}=`));
   return match ? match.slice(name.length + 1) : "";
+}
+
+async function stopProcess(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  await new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL");
+      resolve();
+    }, 5_000);
+    child.once("exit", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+    child.kill();
+  });
 }

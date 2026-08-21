@@ -85,7 +85,7 @@ test("an active override governs the effective plan while the subscription stays
 });
 
 test("admin dashboard user rows expose access-plan override state", () => {
-  assert.match(opsRepo, /access_plan_overrides\(plan_key,active,reason,set_by,updated_at\)/);
+  assert.match(opsRepo, /access_plan_overrides:access_plan_overrides!access_plan_overrides_user_id_fkey\(plan_key,active,reason,set_by,updated_at\)/);
 });
 
 test("lifecycle mutations write audited actions with a mandatory reason", () => {

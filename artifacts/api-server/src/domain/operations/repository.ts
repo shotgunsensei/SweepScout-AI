@@ -9,7 +9,7 @@ export class OperationsRepository{
   async setAccessPlanOverride(actor:AdminActor,targetId:string,planKey:string|null,reason:string){const result=await this.client.rpc("admin_set_access_plan_override",{p_actor_id:actor.userId,p_target_id:targetId,p_plan_key:planKey,p_reason:requiredReason(reason),p_correlation_id:actor.correlationId});check(result,"Unable to apply the audited access-plan override.");return result.data;}
   async source(id:string){const result=await this.client.from("sources").select("*").eq("id",id).maybeSingle();check(result,"Unable to load source.");return result.data??null;}
   async dashboard(){const [profiles,subscriptions,credits,sources,scans,listings,flags,ai,billing,errors,support,audit,featureFlags,deadLetters,failedUrls]=await Promise.all([
-    this.client.from("profiles").select("id,email,display_name,platform_role,account_disabled_at,account_removed_at,created_at,updated_at,subscriptions(plan_key,status,current_period_end),access_plan_overrides(plan_key,active,reason,set_by,updated_at)").order("created_at",{ascending:false}).limit(200),
+    this.client.from("profiles").select("id,email,display_name,platform_role,account_disabled_at,account_removed_at,created_at,updated_at,subscriptions:subscriptions!subscriptions_user_id_fkey(plan_key,status,current_period_end),access_plan_overrides:access_plan_overrides!access_plan_overrides_user_id_fkey(plan_key,active,reason,set_by,updated_at)").order("created_at",{ascending:false}).limit(200),
     this.client.from("subscriptions").select("plan_key,status"),
     this.client.from("credit_ledger").select("id,user_id,amount,entry_type,reason_code,source_reference,created_at").order("created_at",{ascending:false}).limit(500),
     this.client.from("sources").select("*").order("name"),
@@ -23,7 +23,7 @@ export class OperationsRepository{
     this.client.from("admin_audit_logs").select("*").order("created_at",{ascending:false}).limit(100),
     this.client.from("feature_flags").select("*").order("key"),
     this.client.from("source_scan_jobs").select("*,sources(name)").eq("status","dead_letter").order("created_at",{ascending:false}).limit(100),
-    this.client.from("discovered_urls").select("*,sources(name)").eq("status","failed").order("updated_at",{ascending:false}).limit(100)
+    this.client.from("discovered_urls").select("*,sources:sources!discovered_urls_source_id_sources_id_fk(name)").eq("status","failed").order("updated_at",{ascending:false}).limit(100)
   ]);for(const [result,label] of [[profiles,"users"],[subscriptions,"subscriptions"],[credits,"credit usage"],[sources,"sources"],[scans,"scan jobs"],[listings,"listings"],[flags,"listing reviews"],[ai,"AI usage"],[billing,"billing failures"],[errors,"application errors"],[support,"support requests"],[audit,"audit log"],[featureFlags,"feature flags"],[deadLetters,"dead letters"],[failedUrls,"failed URLs"]] as const)check(result,`Unable to load ${label}.`);
     const userRows=profiles.data??[],subRows=subscriptions.data??[],creditRows=credits.data??[],sourceRows=sources.data??[],scanRows=scans.data??[],listingRows=listings.data??[],flagRows=flags.data??[],aiRows=ai.data??[],billingRows=billing.data??[];
     const paid=subRows.filter((x:any)=>["active","trialing","past_due"].includes(x.status)&&x.plan_key!=="free_flight");
